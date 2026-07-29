@@ -256,42 +256,40 @@
     </div>
 
     <script>
-        // REEMPLAZA ESTA URL CON TU WEB APP DE APPS SCRIPT VÁLIDA
+        // CONFIGURACIÓN: Tu URL de Apps Script
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzrXmej_xMQ_7kAcxjcQuu0vO0e83CBsMCaFbk-ISa79gM88FJAuy2h3DkdHz7OUWw5gg/exec";
 
         let globalData = { sedes: [], personal: [] };
 
         document.addEventListener("DOMContentLoaded", async () => {
-            // Renderizar la interfaz inmediatamente para que el usuario pueda interactuar
-            addNewCuadrilla();
-
-            // Cargar datos en segundo plano
             await loadMasterData();
+            addNewCuadrilla();
 
             document.getElementById("btnAddCuadrilla").addEventListener("click", () => addNewCuadrilla());
             document.getElementById("mainForm").addEventListener("submit", handleSubmit);
         });
 
         async function loadMasterData() {
+            showLoading("Sincronizando datos...");
             try {
-                const response = await fetch(WEB_APP_URL);
-                if (!response.ok) throw new Error("Error en red");
-                globalData = await response.json();
-                
-                // Actualizar los selects de sede ya creados si la petición fue exitosa
-                updateAllSedesDropdowns();
-            } catch (err) {
-                console.warn("No se pudieron cargar los datos maestros de Apps Script. Funcionará en modo manual.", err);
-            }
-        }
+                const cached = localStorage.getItem("gas_master_data");
+                const cacheTime = localStorage.getItem("gas_cache_time");
+                const now = new Date().getTime();
 
-        function updateAllSedesDropdowns() {
-            document.querySelectorAll(".input-sede").forEach(select => {
-                const currentValue = select.value;
-                select.innerHTML = '<option value="">Seleccione Sede</option>' +
-                    globalData.sedes.map(s => `<option value="${s}">${s}</option>`).join('');
-                select.value = currentValue;
-            });
+                if (cached && cacheTime && (now - cacheTime < 3600000)) {
+                    globalData = JSON.parse(cached);
+                } else {
+                    const response = await fetch(WEB_APP_URL);
+                    globalData = await response.json();
+                    localStorage.setItem("gas_master_data", JSON.stringify(globalData));
+                    localStorage.setItem("gas_cache_time", now);
+                }
+            } catch (err) {
+                console.error("Error al cargar datos:", err);
+                alert("Error al cargar datos maestros. Verifique su conexión o URL de Apps Script.");
+            } finally {
+                hideLoading();
+            }
         }
 
         function addNewCuadrilla() {
@@ -355,6 +353,7 @@
         function handleSedeChange(selectElement) {
             const card = selectElement.closest(".cuadrilla-card");
             const sedeSeleccionada = selectElement.value;
+            
             const filteredPersonal = globalData.personal.filter(p => p.sede === sedeSeleccionada);
             
             const datalistCoord = card.querySelector("datalist");
@@ -432,7 +431,14 @@
                         }
                     });
 
-                    payload.push({ sede, coordinador, fechaHora, placa, usuario, tecnicos });
+                    payload.push({
+                        sede,
+                        coordinador,
+                        fechaHora,
+                        placa,
+                        usuario,
+                        tecnicos
+                    });
                 });
 
                 const response = await fetch(WEB_APP_URL, {
@@ -444,6 +450,7 @@
 
                 if (result.status === "success") {
                     alert("¡Registros guardados exitosamente!");
+                    localStorage.removeItem("gas_master_data");
                     location.reload();
                 } else {
                     throw new Error(result.message || "Error desconocido en el servidor");
