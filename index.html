@@ -24,7 +24,6 @@
             text-transform: uppercase;
         }
 
-        /* Excepción para correos electrónicos para que mantengan minúsculas lógicas si el usuario desea */
         input[type="email"] {
             text-transform: none !important;
         }
@@ -60,7 +59,6 @@
             padding: 16px;
             margin-bottom: 20px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            position: relative;
         }
 
         .cuadrilla-header {
@@ -205,10 +203,6 @@
             cursor: pointer;
         }
 
-        .btn-primary:active {
-            background: var(--accent-hover);
-        }
-
         #loadingOverlay {
             display: none;
             position: fixed;
@@ -247,9 +241,7 @@
         </header>
 
         <form id="mainForm">
-            <div id="cuadrillasContainer">
-                <!-- Las tarjetas de cuadrillas se inyectan aquí vía JS -->
-            </div>
+            <div id="cuadrillasContainer"></div>
 
             <div class="actions-global">
                 <button type="button" class="btn-secondary" id="btnAddCuadrilla">+ Agregar otra Cuadrilla</button>
@@ -264,40 +256,42 @@
     </div>
 
     <script>
-        // CONFIGURACIÓN: Reemplaza con la URL de tu Web App de Google Apps Script desplegada
+        // REEMPLAZA ESTA URL CON TU WEB APP DE APPS SCRIPT VÁLIDA
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzrXmej_xMQ_7kAcxjcQuu0vO0e83CBsMCaFbk-ISa79gM88FJAuy2h3DkdHz7OUWw5gg/exec";
 
         let globalData = { sedes: [], personal: [] };
 
         document.addEventListener("DOMContentLoaded", async () => {
-            await loadMasterData();
+            // Renderizar la interfaz inmediatamente para que el usuario pueda interactuar
             addNewCuadrilla();
+
+            // Cargar datos en segundo plano
+            await loadMasterData();
 
             document.getElementById("btnAddCuadrilla").addEventListener("click", () => addNewCuadrilla());
             document.getElementById("mainForm").addEventListener("submit", handleSubmit);
         });
 
         async function loadMasterData() {
-            showLoading("Sincronizando datos...");
             try {
-                // Usar localStorage si existe caché para optimizar velocidad y evitar llamadas de red pesadas
-                const cached = localStorage.getItem("gas_master_data");
-                const cacheTime = localStorage.getItem("gas_cache_time");
-                const now = new Date().getTime();
-
-                if (cached && cacheTime && (now - cacheTime < 3600000)) { // 1 hora de caché
-                    globalData = JSON.parse(cached);
-                } else {
-                    const response = await fetch(WEB_APP_URL);
-                    globalData = await response.json();
-                    localStorage.setItem("gas_master_data", JSON.stringify(globalData));
-                    localStorage.setItem("gas_cache_time", now);
-                }
+                const response = await fetch(WEB_APP_URL);
+                if (!response.ok) throw new Error("Error en red");
+                globalData = await response.json();
+                
+                // Actualizar los selects de sede ya creados si la petición fue exitosa
+                updateAllSedesDropdowns();
             } catch (err) {
-                alert("Error al cargar datos maestros. Verifique su conexión.");
-            } finally {
-                hideLoading();
+                console.warn("No se pudieron cargar los datos maestros de Apps Script. Funcionará en modo manual.", err);
             }
+        }
+
+        function updateAllSedesDropdowns() {
+            document.querySelectorAll(".input-sede").forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">Seleccione Sede</option>' +
+                    globalData.sedes.map(s => `<option value="${s}">${s}</option>`).join('');
+                select.value = currentValue;
+            });
         }
 
         function addNewCuadrilla() {
@@ -351,7 +345,7 @@
             `;
 
             container.appendChild(card);
-            addTecnico(card.querySelector('.btn-add-tecnico')); // Agregar por defecto un técnico inicial
+            addTecnico(card.querySelector('.btn-add-tecnico'));
         }
 
         function removeCuadrilla(btn) {
@@ -361,14 +355,11 @@
         function handleSedeChange(selectElement) {
             const card = selectElement.closest(".cuadrilla-card");
             const sedeSeleccionada = selectElement.value;
-            
-            // Filtrar coordinadores y técnicos de esa sede
             const filteredPersonal = globalData.personal.filter(p => p.sede === sedeSeleccionada);
             
             const datalistCoord = card.querySelector("datalist");
             datalistCoord.innerHTML = filteredPersonal.map(p => `<option value="${p.nombre}">`).join('');
             
-            // Actualizar datalists de técnicos existentes en esta tarjeta
             card.querySelectorAll(".datalist-tecnicos").forEach(dl => {
                 dl.innerHTML = filteredPersonal.map(p => `<option value="${p.nombre}">`).join('');
             });
@@ -380,7 +371,7 @@
             const sedeActual = card.querySelector(".input-sede").value;
             const filteredPersonal = globalData.personal.filter(p => !sedeActual || p.sede === sedeActual);
             
-            const dlId = "dl_tech_" + Math.random().toString(36.2);
+            const dlId = "dl_tech_" + Math.random().toString(36).substring(2);
 
             const row = document.createElement("div");
             row.className = "tecnico-row";
@@ -405,7 +396,6 @@
             const selector = button.closest(".cargo-selector");
             const buttons = selector.querySelectorAll(".cargo-btn");
             
-            // Si ya está activo, se desmarca (queda vacío)
             if (button.classList.contains("active")) {
                 button.classList.remove("active");
             } else {
@@ -442,14 +432,7 @@
                         }
                     });
 
-                    payload.push({
-                        sede,
-                        coordinador,
-                        fechaHora,
-                        placa,
-                        usuario,
-                        tecnicos
-                    });
+                    payload.push({ sede, coordinador, fechaHora, placa, usuario, tecnicos });
                 });
 
                 const response = await fetch(WEB_APP_URL, {
@@ -461,7 +444,6 @@
 
                 if (result.status === "success") {
                     alert("¡Registros guardados exitosamente!");
-                    localStorage.removeItem("gas_master_data"); // Forzar actualización si hay cambios
                     location.reload();
                 } else {
                     throw new Error(result.message || "Error desconocido en el servidor");
@@ -476,7 +458,7 @@
         }
 
         function showLoading(text) {
-            document.getElementById("loadingTextinnerText" || "loadingText").innerText = text;
+            document.getElementById("loadingText").innerText = text;
             document.getElementById("loadingOverlay").style.display = "flex";
         }
 
