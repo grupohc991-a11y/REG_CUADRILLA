@@ -135,43 +135,40 @@
         .tecnico-inputs {
             display: flex;
             flex-direction: column;
-            gap: 6px;
-        }
-
-        .cargo-selector {
-            display: flex;
             gap: 4px;
         }
 
-        .cargo-btn {
-            flex: 1;
-            padding: 8px;
-            font-size: 0.8rem;
-            font-weight: bold;
-            border: 1px solid var(--border-color);
-            background: #fff;
-            border-radius: 4px;
-            cursor: pointer;
-            text-align: center;
+        .tecnico-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .cargo-btn.active {
-            background: var(--accent);
+        .badge-t {
+            font-size: 0.7rem;
+            background: var(--primary);
             color: #fff;
-            border-color: var(--accent);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .tecnicos-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
         }
 
         .btn-add-tecnico {
-            width: 100%;
+            flex: 1;
             background: #e2e8f0;
             color: var(--primary);
             border: 1px dashed var(--border-color);
-            padding: 10px;
+            padding: 8px;
             border-radius: var(--radius);
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 6px;
         }
 
         .actions-global {
@@ -256,45 +253,48 @@
     </div>
 
     <script>
-        // CONFIGURACIÓN: Tu URL de Apps Script
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzrXmej_xMQ_7kAcxjcQuu0vO0e83CBsMCaFbk-ISa79gM88FJAuy2h3DkdHz7OUWw5gg/exec";
 
-        let globalData = { sedes: [], personal: [] };
+        let globalData = { sedes: [], placas: [], personal: [] };
 
         document.addEventListener("DOMContentLoaded", async () => {
-            await loadMasterData();
             addNewCuadrilla();
+            await loadMasterData();
 
             document.getElementById("btnAddCuadrilla").addEventListener("click", () => addNewCuadrilla());
             document.getElementById("mainForm").addEventListener("submit", handleSubmit);
         });
 
         async function loadMasterData() {
-            showLoading("Sincronizando datos...");
             try {
-                const cached = localStorage.getItem("gas_master_data");
-                const cacheTime = localStorage.getItem("gas_cache_time");
-                const now = new Date().getTime();
-
-                if (cached && cacheTime && (now - cacheTime < 3600000)) {
-                    globalData = JSON.parse(cached);
-                } else {
-                    const response = await fetch(WEB_APP_URL);
-                    globalData = await response.json();
-                    localStorage.setItem("gas_master_data", JSON.stringify(globalData));
-                    localStorage.setItem("gas_cache_time", now);
-                }
+                const response = await fetch(WEB_APP_URL);
+                if (!response.ok) throw new Error("Error en red");
+                globalData = await response.json();
+                updateAllDropdowns();
             } catch (err) {
-                console.error("Error al cargar datos:", err);
-                alert("Error al cargar datos maestros. Verifique su conexión o URL de Apps Script.");
-            } finally {
-                hideLoading();
+                console.warn("Modo offline o error al conectar con Apps Script.", err);
             }
+        }
+
+        function updateAllDropdowns() {
+            document.querySelectorAll(".cuadrilla-card").forEach(card => {
+                const sedeSelect = card.querySelector(".input-sede");
+                const currentSede = sedeSelect.value;
+                sedeSelect.innerHTML = '<option value="">Seleccione Sede</option>' +
+                    globalData.sedes.map(s => `<option value="${s}">${s}</option>`).join('');
+                sedeSelect.value = currentSede;
+
+                const placaDL = card.querySelector(".list-placas");
+                if (placaDL) {
+                    placaDL.innerHTML = globalData.placas.map(p => `<option value="${p}">`).join('');
+                }
+            });
         }
 
         function addNewCuadrilla() {
             const container = document.getElementById("cuadrillasContainer");
             const index = container.children.length + 1;
+            const placaId = "placas_dl_" + Math.random().toString(36).substring(2);
 
             const card = document.createElement("div");
             card.className = "cuadrilla-card";
@@ -316,34 +316,39 @@
 
                 <div class="form-group">
                     <label>Nombre del Coordinador</label>
-                    <input type="text" class="input-coordinador" list="list-coordinadores-${index}" placeholder="Seleccione o digite..." required>
-                    <datalist id="list-coordinadores-${index}"></datalist>
+                    <input type="text" class="input-coordinador" list="list-coord-${index}" placeholder="Seleccione o digite..." required>
+                    <datalist id="list-coord-${index}"></datalist>
                 </div>
 
                 <div class="form-group">
-                    <label>Fecha</label>
+                    <label>Fecha de Trabajo en Campo</label>
                     <input type="date" class="input-fecha" value="${new Date().toISOString().split('T')[0]}" required>
                 </div>
 
                 <div class="form-group">
                     <label>Placa del Vehículo</label>
-                    <input type="text" class="input-placa" placeholder="Ej: ABC-123" required>
-                </div>
-
-                <div class="form-group">
-                    <label>Usuario (Correo Electrónico)</label>
-                    <input type="email" class="input-usuario" placeholder="correo@empresa.com" required>
+                    <input type="text" class="input-placa" list="${placaId}" placeholder="Ej: ABC-123" required>
+                    <datalist id="${placaId}" class="list-placas">
+                        ${globalData.placas.map(p => `<option value="${p}">`).join('')}
+                    </datalist>
                 </div>
 
                 <div class="tecnicos-container">
                     <label>Técnicos de la Cuadrilla</label>
                     <div class="tecnicos-list"></div>
-                    <button type="button" class="btn-add-tecnico" onclick="addTecnico(this)">+ Agregar Técnico</button>
+                    <div class="tecnicos-actions">
+                        <button type="button" class="btn-add-tecnico" onclick="addTecnico(this, 'T1')">+ Agregar Técnico 1</button>
+                        <button type="button" class="btn-add-tecnico" onclick="addTecnico(this, 'T2')">+ Agregar Técnico 2</button>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 15px;">
+                    <label>Usuario (Correo Electrónico - Opcional)</label>
+                    <input type="email" class="input-usuario" placeholder="correo@empresa.com">
                 </div>
             `;
 
             container.appendChild(card);
-            addTecnico(card.querySelector('.btn-add-tecnico'));
         }
 
         function removeCuadrilla(btn) {
@@ -356,51 +361,45 @@
             
             const filteredPersonal = globalData.personal.filter(p => p.sede === sedeSeleccionada);
             
-            const datalistCoord = card.querySelector("datalist");
-            datalistCoord.innerHTML = filteredPersonal.map(p => `<option value="${p.nombre}">`).join('');
-            
-            card.querySelectorAll(".datalist-tecnicos").forEach(dl => {
-                dl.innerHTML = filteredPersonal.map(p => `<option value="${p.nombre}">`).join('');
+            // Filtrar coordinadores (CARGO == "COORDINADOR")
+            const coordinadores = filteredPersonal.filter(p => p.cargo.includes("COORDINADOR"));
+            const dlCoord = card.querySelector("datalist[id^='list-coord-']");
+            dlCoord.innerHTML = coordinadores.map(p => `<option value="${p.nombre}">`).join('');
+
+            // Actualizar datalists de los técnicos existentes en esta tarjeta según su Sede y Cargo
+            card.querySelectorAll(".tecnico-row").forEach(row => {
+                const tipo = row.dataset.tipo;
+                const dlTech = row.querySelector(".list-tech");
+                const tecnicosFiltrados = filteredPersonal.filter(p => p.cargo.includes(tipo));
+                dlTech.innerHTML = tecnicosFiltrados.map(p => `<option value="${p.nombre}">`).join('');
             });
         }
 
-        function addTecnico(btn) {
+        function addTecnico(btn, tipo) {
             const card = btn.closest(".cuadrilla-card");
             const tecnicosList = card.querySelector(".tecnicos-list");
             const sedeActual = card.querySelector(".input-sede").value;
-            const filteredPersonal = globalData.personal.filter(p => !sedeActual || p.sede === sedeActual);
             
+            const filteredPersonal = globalData.personal.filter(p => (!sedeActual || p.sede === sedeActual) && p.cargo.includes(tipo));
             const dlId = "dl_tech_" + Math.random().toString(36).substring(2);
 
             const row = document.createElement("div");
             row.className = "tecnico-row";
+            row.dataset.tipo = tipo;
             row.innerHTML = `
                 <div class="tecnico-inputs">
-                    <input type="text" class="input-nombre-tecnico" list="${dlId}" placeholder="Nombre del Técnico" required>
-                    <datalist id="${dlId}" class="datalist-tecnicos">
+                    <div class="tecnico-header-row">
+                        <label>Nombre del Técnico ${tipo === 'T1' ? '1' : '2'}</label>
+                        <span class="badge-t">${tipo}</span>
+                    </div>
+                    <input type="text" class="input-nombre-tecnico" list="${dlId}" placeholder="Seleccione o digite..." required>
+                    <datalist id="${dlId}" class="list-tech">
                         ${filteredPersonal.map(p => `<option value="${p.nombre}">`).join('')}
                     </datalist>
-                    
-                    <div class="cargo-selector">
-                        <button type="button" class="cargo-btn" onclick="selectCargo(this, 'T1')">[T1]</button>
-                        <button type="button" class="cargo-btn" onclick="selectCargo(this, 'T2')">[T2]</button>
-                    </div>
                 </div>
                 <button type="button" class="btn-remove-cuadrilla" onclick="this.closest('.tecnico-row').remove()">X</button>
             `;
             tecnicosList.appendChild(row);
-        }
-
-        function selectCargo(button, tipo) {
-            const selector = button.closest(".cargo-selector");
-            const buttons = selector.querySelectorAll(".cargo-btn");
-            
-            if (button.classList.contains("active")) {
-                button.classList.remove("active");
-            } else {
-                buttons.forEach(b => b.classList.remove("active"));
-                button.classList.add("active");
-            }
         }
 
         async function handleSubmit(e) {
@@ -420,25 +419,17 @@
                     const placa = card.querySelector(".input-placa").value;
                     const usuario = card.querySelector(".input-usuario").value;
 
-                    let tecnicos = [];
+                    let integrantes = [];
                     card.querySelectorAll(".tecnico-row").forEach(tRow => {
                         const nombreTec = tRow.querySelector(".input-nombre-tecnico").value;
-                        const activeCargoBtn = tRow.querySelector(".cargo-btn.active");
-                        const tipoCargo = activeCargoBtn ? activeCargoBtn.innerText.replace(/[\[\]]/g, '') : "";
+                        const cargoTec = tRow.dataset.tipo;
 
                         if (nombreTec) {
-                            tecnicos.push({ nombre: nombreTec, tipo: tipoCargo });
+                            integrantes.push({ nombre: nombreTec, cargo: cargoTec });
                         }
                     });
 
-                    payload.push({
-                        sede,
-                        coordinador,
-                        fechaHora,
-                        placa,
-                        usuario,
-                        tecnicos
-                    });
+                    payload.push({ sede, coordinador, fechaHora, placa, usuario, integrantes });
                 });
 
                 const response = await fetch(WEB_APP_URL, {
@@ -450,7 +441,6 @@
 
                 if (result.status === "success") {
                     alert("¡Registros guardados exitosamente!");
-                    localStorage.removeItem("gas_master_data");
                     location.reload();
                 } else {
                     throw new Error(result.message || "Error desconocido en el servidor");
