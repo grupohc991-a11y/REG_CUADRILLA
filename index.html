@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro de Cuadrillas - Corporativo</title>
+    <title>Registro de Cuadrillas</title>
     <style>
         :root {
             --primary: #0f172a;
@@ -89,6 +89,7 @@
 
         .form-group {
             margin-bottom: 12px;
+            position: relative;
         }
 
         label {
@@ -99,14 +100,39 @@
             color: var(--primary);
         }
 
+        /* --- ESTILOS DE COMPONENTES DE ENTRADA Y DROPDOWN PERSONALIZADO --- */
+        .select-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
         input, select {
             width: 100%;
-            padding: 12px;
-            font-size: 1rem;
+            padding: 12px 36px 12px 12px;
+            font-size: 0.95rem;
             border: 1px solid var(--border-color);
             border-radius: var(--radius);
             background: #fff;
             color: var(--text-main);
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        /* Flecha estandarizada SVG para SELECT e INPUTS PERSONALIZADOS */
+        .custom-arrow {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 14px;
+            height: 14px;
+            pointer-events: none;
+            fill: #64748b;
+            transition: transform 0.2s ease;
+        }
+
+        .custom-dropdown-container.open .custom-arrow {
+            transform: translateY(-50%) rotate(180deg);
         }
 
         input:focus, select:focus {
@@ -115,6 +141,51 @@
             box-shadow: 0 0 0 2px rgba(37,99,235,0.1);
         }
 
+        /* MENÚ FLOTANTE DE BÚSQUEDA PERSONALIZADO */
+        .custom-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 100;
+        }
+
+        .custom-dropdown-container.open .custom-dropdown-menu {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 12px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-item:hover, .dropdown-item.active {
+            background-color: #eff6ff;
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        .dropdown-no-results {
+            padding: 12px;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            font-style: italic;
+        }
+
+        /* TÉCNICOS */
         .tecnicos-container {
             margin-top: 15px;
             border-top: 1px dashed var(--border-color);
@@ -164,7 +235,7 @@
             background: #e2e8f0;
             color: var(--primary);
             border: 1px dashed var(--border-color);
-            padding: 8px;
+            padding: 10px;
             border-radius: var(--radius);
             font-size: 0.75rem;
             font-weight: bold;
@@ -241,8 +312,8 @@
             <div id="cuadrillasContainer"></div>
 
             <div class="actions-global">
-                <button type="button" class="btn-secondary" id="btnAddCuadrilla">+ Agregar otra Cuadrilla</button>
-                <button type="submit" class="btn-primary" id="btnSubmit">Enviar Registros</button>
+                <button type="button" class="btn-secondary" id="btnAddCuadrilla">+ AGREGAR OTRA CUADRILLA</button>
+                <button type="submit" class="btn-primary" id="btnSubmit">ENVIAR REGISTROS</button>
             </div>
         </form>
     </div>
@@ -257,18 +328,27 @@
 
         let globalData = { sedes: [], placas: [], personal: [] };
 
+        const SVG_ARROW = `<svg class="custom-arrow" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>`;
+
         document.addEventListener("DOMContentLoaded", async () => {
             addNewCuadrilla();
             await loadMasterData();
 
             document.getElementById("btnAddCuadrilla").addEventListener("click", () => addNewCuadrilla());
             document.getElementById("mainForm").addEventListener("submit", handleSubmit);
+
+            // Cerrar todos los menus desplegables al tocar fuera de ellos
+            document.addEventListener("click", (e) => {
+                if (!e.target.closest(".custom-dropdown-container")) {
+                    document.querySelectorAll(".custom-dropdown-container").forEach(el => el.classList.remove("open"));
+                }
+            });
         });
 
         async function loadMasterData() {
             try {
                 const response = await fetch(WEB_APP_URL);
-                if (!response.ok) throw new Error("Error en red");
+                if (!response.ok) throw new Error("Error de red");
                 globalData = await response.json();
                 updateAllDropdowns();
             } catch (err) {
@@ -280,21 +360,17 @@
             document.querySelectorAll(".cuadrilla-card").forEach(card => {
                 const sedeSelect = card.querySelector(".input-sede");
                 const currentSede = sedeSelect.value;
-                sedeSelect.innerHTML = '<option value="">Seleccione Sede</option>' +
+                sedeSelect.innerHTML = '<option value="">SELECCIONE SEDE</option>' +
                     globalData.sedes.map(s => `<option value="${s}">${s}</option>`).join('');
                 sedeSelect.value = currentSede;
 
-                const placaDL = card.querySelector(".list-placas");
-                if (placaDL) {
-                    placaDL.innerHTML = globalData.placas.map(p => `<option value="${p}">`).join('');
-                }
+                updateCardOptions(card);
             });
         }
 
         function addNewCuadrilla() {
             const container = document.getElementById("cuadrillasContainer");
             const index = container.children.length + 1;
-            const placaId = "placas_dl_" + Math.random().toString(36).substring(2);
 
             const card = document.createElement("div");
             card.className = "cuadrilla-card";
@@ -302,53 +378,108 @@
 
             card.innerHTML = `
                 <div class="cuadrilla-header">
-                    <span class="cuadrilla-title">Cuadrilla #${index}</span>
-                    ${index > 1 ? '<button type="button" class="btn-remove-cuadrilla" onclick="removeCuadrilla(this)">Eliminar</button>' : ''}
+                    <span class="cuadrilla-title">CUADRILLA #${index}</span>
+                    ${index > 1 ? '<button type="button" class="btn-remove-cuadrilla" onclick="removeCuadrilla(this)">ELIMINAR</button>' : ''}
                 </div>
                 
                 <div class="form-group">
-                    <label>Sede</label>
-                    <select class="input-sede" required onchange="handleSedeChange(this)">
-                        <option value="">Seleccione Sede</option>
-                        ${globalData.sedes.map(s => `<option value="${s}">${s}</option>`).join('')}
-                    </select>
+                    <label>SEDE</label>
+                    <div class="select-wrapper">
+                        <select class="input-sede" required onchange="handleSedeChange(this)">
+                            <option value="">SELECCIONE SEDE</option>
+                            ${globalData.sedes.map(s => `<option value="${s}">${s}</option>`).join('')}
+                        </select>
+                        ${SVG_ARROW}
+                    </div>
                 </div>
 
                 <div class="form-group">
-                    <label>Nombre del Coordinador</label>
-                    <input type="text" class="input-coordinador" list="list-coord-${index}" placeholder="Seleccione o digite..." required>
-                    <datalist id="list-coord-${index}"></datalist>
+                    <label>NOMBRE DEL COORDINADOR</label>
+                    ${createCustomDropdownHtml("input-coordinador", "SELECCIONE O DIGITE...")}
                 </div>
 
                 <div class="form-group">
-                    <label>Fecha de Trabajo en Campo</label>
+                    <label>FECHA DE TRABAJO EN CAMPO</label>
                     <input type="date" class="input-fecha" value="${new Date().toISOString().split('T')[0]}" required>
                 </div>
 
                 <div class="form-group">
-                    <label>Placa del Vehículo</label>
-                    <input type="text" class="input-placa" list="${placaId}" placeholder="Ej: ABC-123" required>
-                    <datalist id="${placaId}" class="list-placas">
-                        ${globalData.placas.map(p => `<option value="${p}">`).join('')}
-                    </datalist>
+                    <label>PLACA DEL VEHÍCULO</label>
+                    ${createCustomDropdownHtml("input-placa", "EJ: ABC-123")}
                 </div>
 
                 <div class="tecnicos-container">
-                    <label>Técnicos de la Cuadrilla</label>
+                    <label>TÉCNICOS DE LA CUADRILLA</label>
                     <div class="tecnicos-list"></div>
                     <div class="tecnicos-actions">
-                        <button type="button" class="btn-add-tecnico" onclick="addTecnico(this, 'T1')">+ Agregar Técnico 1</button>
-                        <button type="button" class="btn-add-tecnico" onclick="addTecnico(this, 'T2')">+ Agregar Técnico 2</button>
+                        <button type="button" class="btn-add-tecnico" onclick="addTecnico(this, 'T1')">+ AGREGAR TÉCNICO 1</button>
+                        <button type="button" class="btn-add-tecnico" onclick="addTecnico(this, 'T2')">+ AGREGAR TÉCNICO 2</button>
                     </div>
                 </div>
 
                 <div class="form-group" style="margin-top: 15px;">
-                    <label>Usuario (Correo Electrónico - Opcional)</label>
+                    <label>USUARIO (CORREO ELECTRÓNICO - OPCIONAL)</label>
                     <input type="email" class="input-usuario" placeholder="correo@empresa.com">
                 </div>
             `;
 
             container.appendChild(card);
+            
+            // Inicializar eventos de los dropdowns personalizados en esta tarjeta
+            initCustomDropdown(card.querySelector(".input-coordinador"));
+            initCustomDropdown(card.querySelector(".input-placa"));
+
+            updateCardOptions(card);
+        }
+
+        function createCustomDropdownHtml(inputClass, placeholder) {
+            return `
+                <div class="custom-dropdown-container">
+                    <div class="select-wrapper">
+                        <input type="text" class="${inputClass}" placeholder="${placeholder}" autocomplete="off" required>
+                        ${SVG_ARROW}
+                    </div>
+                    <div class="custom-dropdown-menu"></div>
+                </div>
+            `;
+        }
+
+        function initCustomDropdown(inputElement, getOptionsFn) {
+            const container = inputElement.closest(".custom-dropdown-container");
+            const menu = container.querySelector(".custom-dropdown-menu");
+
+            const renderOptions = (filterText = "") => {
+                const options = getOptionsFn ? getOptionsFn() : container.datasetOptions || [];
+                const search = filterText.trim().toUpperCase();
+                
+                const filtered = options.filter(opt => opt.toUpperCase().includes(search));
+
+                if (filtered.length === 0) {
+                    menu.innerHTML = `<div class="dropdown-no-results">Sin coincidencias (presione para usar texto libre)</div>`;
+                } else {
+                    menu.innerHTML = filtered.map(opt => `<div class="dropdown-item" data-value="${opt}">${opt}</div>`).join("");
+                }
+            };
+
+            inputElement.addEventListener("focus", () => {
+                document.querySelectorAll(".custom-dropdown-container").forEach(el => el.classList.remove("open"));
+                container.classList.add("open");
+                renderOptions(inputElement.value);
+            });
+
+            inputElement.addEventListener("input", () => {
+                inputElement.value = inputElement.value.toUpperCase();
+                container.classList.add("open");
+                renderOptions(inputElement.value);
+            });
+
+            menu.addEventListener("click", (e) => {
+                const item = e.target.closest(".dropdown-item");
+                if (item) {
+                    inputElement.value = item.dataset.value;
+                    container.classList.remove("open");
+                }
+            });
         }
 
         function removeCuadrilla(btn) {
@@ -357,21 +488,38 @@
 
         function handleSedeChange(selectElement) {
             const card = selectElement.closest(".cuadrilla-card");
-            const sedeSeleccionada = selectElement.value;
-            
-            const filteredPersonal = globalData.personal.filter(p => p.sede === sedeSeleccionada);
-            
-            // Filtrar coordinadores (CARGO == "COORDINADOR")
-            const coordinadores = filteredPersonal.filter(p => p.cargo.includes("COORDINADOR"));
-            const dlCoord = card.querySelector("datalist[id^='list-coord-']");
-            dlCoord.innerHTML = coordinadores.map(p => `<option value="${p.nombre}">`).join('');
+            updateCardOptions(card);
+        }
 
-            // Actualizar datalists de los técnicos existentes en esta tarjeta según su Sede y Cargo
+        function updateCardOptions(card) {
+            const sedeActual = card.querySelector(".input-sede").value;
+            const filteredPersonal = globalData.personal.filter(p => !sedeActual || p.sede === sedeActual);
+
+            // 1. Opciones Coordinador (CARGO contiene COORDINADOR)
+            const coordinadores = filteredPersonal
+                .filter(p => p.cargo.includes("COORDINADOR"))
+                .map(p => p.nombre);
+            
+            const coordInput = card.querySelector(".input-coordinador");
+            const coordContainer = coordInput.closest(".custom-dropdown-container");
+            coordContainer.datasetOptions = coordinadores;
+
+            // 2. Opciones Placas (Globales)
+            const placaInput = card.querySelector(".input-placa");
+            const placaContainer = placaInput.closest(".custom-dropdown-container");
+            placaContainer.datasetOptions = globalData.placas;
+
+            // 3. Actualizar técnicos ya creados
             card.querySelectorAll(".tecnico-row").forEach(row => {
                 const tipo = row.dataset.tipo;
-                const dlTech = row.querySelector(".list-tech");
-                const tecnicosFiltrados = filteredPersonal.filter(p => p.cargo.includes(tipo));
-                dlTech.innerHTML = tecnicosFiltrados.map(p => `<option value="${p.nombre}">`).join('');
+                const techInput = row.querySelector(".input-nombre-tecnico");
+                const techContainer = techInput.closest(".custom-dropdown-container");
+
+                const listTech = filteredPersonal
+                    .filter(p => p.cargo.includes(tipo))
+                    .map(p => p.nombre);
+                
+                techContainer.datasetOptions = listTech;
             });
         }
 
@@ -381,7 +529,7 @@
             const sedeActual = card.querySelector(".input-sede").value;
             
             const filteredPersonal = globalData.personal.filter(p => (!sedeActual || p.sede === sedeActual) && p.cargo.includes(tipo));
-            const dlId = "dl_tech_" + Math.random().toString(36).substring(2);
+            const opcionesTecnico = filteredPersonal.map(p => p.nombre);
 
             const row = document.createElement("div");
             row.className = "tecnico-row";
@@ -389,24 +537,29 @@
             row.innerHTML = `
                 <div class="tecnico-inputs">
                     <div class="tecnico-header-row">
-                        <label>Nombre del Técnico ${tipo === 'T1' ? '1' : '2'}</label>
+                        <label>NOMBRE DEL TÉCNICO ${tipo === 'T1' ? '1' : '2'}</label>
                         <span class="badge-t">${tipo}</span>
                     </div>
-                    <input type="text" class="input-nombre-tecnico" list="${dlId}" placeholder="Seleccione o digite..." required>
-                    <datalist id="${dlId}" class="list-tech">
-                        ${filteredPersonal.map(p => `<option value="${p.nombre}">`).join('')}
-                    </datalist>
+                    ${createCustomDropdownHtml("input-nombre-tecnico", "SELECCIONE O DIGITE...")}
                 </div>
                 <button type="button" class="btn-remove-cuadrilla" onclick="this.closest('.tecnico-row').remove()">X</button>
             `;
+            
             tecnicosList.appendChild(row);
+
+            // Inicializar el dropdown dinámico del técnico agregado
+            const techInput = row.querySelector(".input-nombre-tecnico");
+            const techContainer = techInput.closest(".custom-dropdown-container");
+            techContainer.datasetOptions = opcionesTecnico;
+            
+            initCustomDropdown(techInput);
         }
 
         async function handleSubmit(e) {
             e.preventDefault();
             const btnSubmit = document.getElementById("btnSubmit");
             btnSubmit.disabled = true;
-            showLoading("Enviando registros...");
+            showLoading("Guardando registros...");
 
             try {
                 const tarjetas = document.querySelectorAll(".cuadrilla-card");
