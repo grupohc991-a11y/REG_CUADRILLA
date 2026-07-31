@@ -100,7 +100,7 @@
             color: var(--primary);
         }
 
-        /* --- ESTILOS DE COMPONENTES DE ENTRADA Y DROPDOWN PERSONALIZADO --- */
+        /* --- CONTENEDORES Y INPUTS --- */
         .select-wrapper {
             position: relative;
             width: 100%;
@@ -118,7 +118,7 @@
             -webkit-appearance: none;
         }
 
-        /* Flecha estandarizada SVG para SELECT e INPUTS PERSONALIZADOS */
+        /* SVG Flecha estandarizada para todos los componentes desplegables */
         .custom-arrow {
             position: absolute;
             right: 12px;
@@ -141,7 +141,12 @@
             box-shadow: 0 0 0 2px rgba(37,99,235,0.1);
         }
 
-        /* MENÚ FLOTANTE DE BÚSQUEDA PERSONALIZADO */
+        /* --- DROPDOWN MENÚ FLOTANTE CUSTOM --- */
+        .custom-dropdown-container {
+            position: relative;
+            width: 100%;
+        }
+
         .custom-dropdown-menu {
             display: none;
             position: absolute;
@@ -172,7 +177,7 @@
             border-bottom: none;
         }
 
-        .dropdown-item:hover, .dropdown-item.active {
+        .dropdown-item:hover, .dropdown-item:active {
             background-color: #eff6ff;
             color: var(--accent);
             font-weight: bold;
@@ -185,7 +190,7 @@
             font-style: italic;
         }
 
-        /* TÉCNICOS */
+        /* --- SECCIÓN DE TÉCNICOS --- */
         .tecnicos-container {
             margin-top: 15px;
             border-top: 1px dashed var(--border-color);
@@ -337,7 +342,7 @@
             document.getElementById("btnAddCuadrilla").addEventListener("click", () => addNewCuadrilla());
             document.getElementById("mainForm").addEventListener("submit", handleSubmit);
 
-            // Cerrar todos los menus desplegables al tocar fuera de ellos
+            // Cierre global de menus al tocar fuera de cualquier dropdown flotante
             document.addEventListener("click", (e) => {
                 if (!e.target.closest(".custom-dropdown-container")) {
                     document.querySelectorAll(".custom-dropdown-container").forEach(el => el.classList.remove("open"));
@@ -348,11 +353,11 @@
         async function loadMasterData() {
             try {
                 const response = await fetch(WEB_APP_URL);
-                if (!response.ok) throw new Error("Error de red");
+                if (!response.ok) throw new Error("Error en red");
                 globalData = await response.json();
                 updateAllDropdowns();
             } catch (err) {
-                console.warn("Modo offline o error al conectar con Apps Script.", err);
+                console.warn("Error al cargar datos remotos. El sistema operará en texto libre.", err);
             }
         }
 
@@ -418,14 +423,14 @@
                 </div>
 
                 <div class="form-group" style="margin-top: 15px;">
-                    <label>USUARIO (CORREO ELECTRÓNICO - OPCIONAL)</label>
+                    <label>USUARIO (CORREO ELECTRÓNICO)</label>
                     <input type="email" class="input-usuario" placeholder="correo@empresa.com">
                 </div>
             `;
 
             container.appendChild(card);
             
-            // Inicializar eventos de los dropdowns personalizados en esta tarjeta
+            // Inicializar controladores para el Coordinador y la Placa en esta cuadrilla
             initCustomDropdown(card.querySelector(".input-coordinador"));
             initCustomDropdown(card.querySelector(".input-placa"));
 
@@ -444,18 +449,18 @@
             `;
         }
 
-        function initCustomDropdown(inputElement, getOptionsFn) {
+        function initCustomDropdown(inputElement) {
             const container = inputElement.closest(".custom-dropdown-container");
             const menu = container.querySelector(".custom-dropdown-menu");
 
             const renderOptions = (filterText = "") => {
-                const options = getOptionsFn ? getOptionsFn() : container.datasetOptions || [];
+                const options = JSON.parse(container.dataset.options || "[]");
                 const search = filterText.trim().toUpperCase();
                 
                 const filtered = options.filter(opt => opt.toUpperCase().includes(search));
 
                 if (filtered.length === 0) {
-                    menu.innerHTML = `<div class="dropdown-no-results">Sin coincidencias (presione para usar texto libre)</div>`;
+                    menu.innerHTML = `<div class="dropdown-no-results">Sin coincidencias (se guardará como texto libre)</div>`;
                 } else {
                     menu.innerHTML = filtered.map(opt => `<div class="dropdown-item" data-value="${opt}">${opt}</div>`).join("");
                 }
@@ -495,31 +500,27 @@
             const sedeActual = card.querySelector(".input-sede").value;
             const filteredPersonal = globalData.personal.filter(p => !sedeActual || p.sede === sedeActual);
 
-            // 1. Opciones Coordinador (CARGO contiene COORDINADOR)
+            // 1. Coordinadores por Sede (CARGO == COORDINADOR)
             const coordinadores = filteredPersonal
                 .filter(p => p.cargo.includes("COORDINADOR"))
                 .map(p => p.nombre);
             
-            const coordInput = card.querySelector(".input-coordinador");
-            const coordContainer = coordInput.closest(".custom-dropdown-container");
-            coordContainer.datasetOptions = coordinadores;
+            const coordContainer = card.querySelector(".input-coordinador").closest(".custom-dropdown-container");
+            coordContainer.dataset.options = JSON.stringify(coordinadores);
 
-            // 2. Opciones Placas (Globales)
-            const placaInput = card.querySelector(".input-placa");
-            const placaContainer = placaInput.closest(".custom-dropdown-container");
-            placaContainer.datasetOptions = globalData.placas;
+            // 2. Placas (Globales)
+            const placaContainer = card.querySelector(".input-placa").closest(".custom-dropdown-container");
+            placaContainer.dataset.options = JSON.stringify(globalData.placas);
 
-            // 3. Actualizar técnicos ya creados
+            // 3. Actualizar técnicos dinámicos existentes según Sede y Cargo
             card.querySelectorAll(".tecnico-row").forEach(row => {
                 const tipo = row.dataset.tipo;
-                const techInput = row.querySelector(".input-nombre-tecnico");
-                const techContainer = techInput.closest(".custom-dropdown-container");
-
+                const techContainer = row.querySelector(".input-nombre-tecnico").closest(".custom-dropdown-container");
                 const listTech = filteredPersonal
                     .filter(p => p.cargo.includes(tipo))
                     .map(p => p.nombre);
                 
-                techContainer.datasetOptions = listTech;
+                techContainer.dataset.options = JSON.stringify(listTech);
             });
         }
 
@@ -547,10 +548,10 @@
             
             tecnicosList.appendChild(row);
 
-            // Inicializar el dropdown dinámico del técnico agregado
+            // Iniciar componente dropdown dinámico en la nueva fila
             const techInput = row.querySelector(".input-nombre-tecnico");
             const techContainer = techInput.closest(".custom-dropdown-container");
-            techContainer.datasetOptions = opcionesTecnico;
+            techContainer.dataset.options = JSON.stringify(opcionesTecnico);
             
             initCustomDropdown(techInput);
         }
