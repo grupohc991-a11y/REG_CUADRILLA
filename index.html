@@ -59,7 +59,7 @@
             margin-bottom: 20px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
             position: relative;
-            overflow: visible; /* Permite despliegue flotante sin recortes */
+            overflow: visible;
         }
 
         .cuadrilla-header {
@@ -101,7 +101,6 @@
             color: var(--primary);
         }
 
-        /* --- UNIFICACIÓN VISUAL DE INPUTS Y FLECHAS --- */
         .select-wrapper {
             position: relative;
             width: 100%;
@@ -146,7 +145,6 @@
             box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
         }
 
-        /* --- COMPONENTE DROPDOWN FLOTANTE PERSONALIZADO --- */
         .custom-dropdown-container {
             position: relative;
             width: 100%;
@@ -197,7 +195,6 @@
             font-style: italic;
         }
 
-        /* --- BLOQUE DE TÉCNICOS --- */
         .tecnicos-container {
             margin-top: 15px;
             border-top: 1px dashed var(--border-color);
@@ -343,6 +340,30 @@
 
         const SVG_ARROW = `<svg class="custom-arrow" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>`;
 
+        // Función Helper para normalizar cadenas (quita acentos y convierte a mayúsculas)
+        function normalizeText(text) {
+            return String(text || "")
+                .toUpperCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .trim();
+        }
+
+        // Evalúa si un cargo corresponde al tipo solicitado (T1, T2 o COORDINADOR)
+        function matchesCargo(cargoDB, tipoRequerido) {
+            const cargoNorm = normalizeText(cargoDB);
+            const tipoNorm = normalizeText(tipoRequerido);
+
+            if (tipoNorm === 'COORDINADOR') {
+                return cargoNorm.includes("COORDINADOR");
+            } else if (tipoNorm === 'T1') {
+                return cargoNorm.includes("TECNICO 1") || cargoNorm.includes("TECNICO1") || cargoNorm.includes("T1");
+            } else if (tipoNorm === 'T2') {
+                return cargoNorm.includes("TECNICO 2") || cargoNorm.includes("TECNICO2") || cargoNorm.includes("T2");
+            }
+            return false;
+        }
+
         document.addEventListener("DOMContentLoaded", async () => {
             addNewCuadrilla();
             await loadMasterData();
@@ -350,7 +371,6 @@
             document.getElementById("btnAddCuadrilla").addEventListener("click", () => addNewCuadrilla());
             document.getElementById("mainForm").addEventListener("submit", handleSubmit);
 
-            // Cierre global cuando se presione/toque fuera de cualquier desplegable
             document.addEventListener("pointerdown", (e) => {
                 if (!e.target.closest(".custom-dropdown-container")) {
                     closeAllDropdowns();
@@ -442,7 +462,6 @@
 
             container.appendChild(card);
             
-            // Inicializar eventos de Coordinador y Placa
             initCustomDropdown(card.querySelector(".input-coordinador"));
             initCustomDropdown(card.querySelector(".input-placa"));
 
@@ -471,8 +490,8 @@
 
             const renderOptions = (filterText = "") => {
                 const options = container._optionsList || [];
-                const search = filterText.trim().toUpperCase();
-                const filtered = options.filter(opt => opt.toUpperCase().includes(search));
+                const searchNorm = normalizeText(filterText);
+                const filtered = options.filter(opt => normalizeText(opt).includes(searchNorm));
 
                 if (filtered.length === 0) {
                     menu.innerHTML = `<div class="dropdown-no-results">Sin coincidencias (conservará texto libre)</div>`;
@@ -487,7 +506,6 @@
                 renderOptions(inputElement.value);
             };
 
-            // Eventos garantizados para touch / móvil y escritorio
             inputElement.addEventListener("focus", openMenu);
             inputElement.addEventListener("click", openMenu);
 
@@ -518,12 +536,15 @@
         }
 
         function updateCardOptions(card) {
-            const sedeActual = card.querySelector(".input-sede").value;
-            const filteredPersonal = globalData.personal.filter(p => !sedeActual || p.sede === sedeActual);
+            const sedeActualNorm = normalizeText(card.querySelector(".input-sede").value);
+            
+            const filteredPersonal = globalData.personal.filter(p => {
+                return !sedeActualNorm || normalizeText(p.sede) === sedeActualNorm;
+            });
 
-            // 1. Coordinadores por Sede (CARGO == COORDINADOR)
+            // 1. Coordinadores por Sede
             const coordinadores = filteredPersonal
-                .filter(p => p.cargo.includes("COORDINADOR"))
+                .filter(p => matchesCargo(p.cargo, "COORDINADOR"))
                 .map(p => p.nombre);
             
             const coordContainer = card.querySelector(".input-coordinador").closest(".custom-dropdown-container");
@@ -533,12 +554,13 @@
             const placaContainer = card.querySelector(".input-placa").closest(".custom-dropdown-container");
             placaContainer._optionsList = Array.from(new Set(globalData.placas));
 
-            // 3. Actualizar técnicos dinámicos existentes
+            // 3. Actualizar técnicos dinámicos existentes según Sede y Cargo
             card.querySelectorAll(".tecnico-row").forEach(row => {
                 const tipo = row.dataset.tipo;
                 const techContainer = row.querySelector(".input-nombre-tecnico").closest(".custom-dropdown-container");
+                
                 const listTech = filteredPersonal
-                    .filter(p => p.cargo.includes(tipo))
+                    .filter(p => matchesCargo(p.cargo, tipo))
                     .map(p => p.nombre);
                 
                 techContainer._optionsList = Array.from(new Set(listTech));
@@ -548,9 +570,13 @@
         function addTecnico(btn, tipo) {
             const card = btn.closest(".cuadrilla-card");
             const tecnicosList = card.querySelector(".tecnicos-list");
-            const sedeActual = card.querySelector(".input-sede").value;
+            const sedeActualNorm = normalizeText(card.querySelector(".input-sede").value);
             
-            const filteredPersonal = globalData.personal.filter(p => (!sedeActual || p.sede === sedeActual) && p.cargo.includes(tipo));
+            const filteredPersonal = globalData.personal.filter(p => {
+                const matchSede = !sedeActualNorm || normalizeText(p.sede) === sedeActualNorm;
+                return matchSede && matchesCargo(p.cargo, tipo);
+            });
+            
             const opcionesTecnico = Array.from(new Set(filteredPersonal.map(p => p.nombre)));
 
             const row = document.createElement("div");
@@ -569,7 +595,6 @@
             
             tecnicosList.appendChild(row);
 
-            // Inicialización y vinculación directa de datos al dropdown del nuevo técnico
             const techInput = row.querySelector(".input-nombre-tecnico");
             const techContainer = techInput.closest(".custom-dropdown-container");
             techContainer._optionsList = opcionesTecnico;
