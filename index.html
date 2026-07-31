@@ -2,13 +2,12 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Registro de Cuadrillas</title>
     <style>
         :root {
             --primary: #0f172a;
             --accent: #2563eb;
-            --accent-hover: #1d4ed8;
             --bg-color: #f8fafc;
             --card-bg: #ffffff;
             --text-main: #334155;
@@ -59,6 +58,8 @@
             padding: 16px;
             margin-bottom: 20px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            position: relative;
+            overflow: visible; /* Permite despliegue flotante sin recortes */
         }
 
         .cuadrilla-header {
@@ -80,7 +81,7 @@
             background: #fee2e2;
             color: #991b1b;
             border: none;
-            padding: 4px 8px;
+            padding: 6px 10px;
             border-radius: 4px;
             font-size: 0.75rem;
             cursor: pointer;
@@ -88,7 +89,7 @@
         }
 
         .form-group {
-            margin-bottom: 12px;
+            margin-bottom: 14px;
             position: relative;
         }
 
@@ -96,19 +97,22 @@
             display: block;
             font-size: 0.75rem;
             font-weight: 700;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
             color: var(--primary);
         }
 
-        /* --- CONTENEDORES Y INPUTS --- */
+        /* --- UNIFICACIÓN VISUAL DE INPUTS Y FLECHAS --- */
         .select-wrapper {
             position: relative;
             width: 100%;
+            display: flex;
+            align-items: center;
         }
 
         input, select {
             width: 100%;
-            padding: 12px 36px 12px 12px;
+            height: 46px;
+            padding: 0 40px 0 12px;
             font-size: 0.95rem;
             border: 1px solid var(--border-color);
             border-radius: var(--radius);
@@ -116,19 +120,20 @@
             color: var(--text-main);
             appearance: none;
             -webkit-appearance: none;
+            -moz-appearance: none;
         }
 
-        /* SVG Flecha estandarizada para todos los componentes desplegables */
         .custom-arrow {
             position: absolute;
             right: 12px;
             top: 50%;
             transform: translateY(-50%);
-            width: 14px;
-            height: 14px;
+            width: 16px;
+            height: 16px;
             pointer-events: none;
             fill: #64748b;
             transition: transform 0.2s ease;
+            z-index: 5;
         }
 
         .custom-dropdown-container.open .custom-arrow {
@@ -138,10 +143,10 @@
         input:focus, select:focus {
             outline: none;
             border-color: var(--accent);
-            box-shadow: 0 0 0 2px rgba(37,99,235,0.1);
+            box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
         }
 
-        /* --- DROPDOWN MENÚ FLOTANTE CUSTOM --- */
+        /* --- COMPONENTE DROPDOWN FLOTANTE PERSONALIZADO --- */
         .custom-dropdown-container {
             position: relative;
             width: 100%;
@@ -153,13 +158,14 @@
             top: calc(100% + 4px);
             left: 0;
             right: 0;
-            max-height: 200px;
+            max-height: 220px;
             overflow-y: auto;
             background: #ffffff;
             border: 1px solid var(--border-color);
             border-radius: var(--radius);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 100;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            z-index: 999;
+            -webkit-overflow-scrolling: touch;
         }
 
         .custom-dropdown-container.open .custom-dropdown-menu {
@@ -171,6 +177,7 @@
             font-size: 0.85rem;
             cursor: pointer;
             border-bottom: 1px solid #f1f5f9;
+            color: var(--text-main);
         }
 
         .dropdown-item:last-child {
@@ -190,7 +197,7 @@
             font-style: italic;
         }
 
-        /* --- SECCIÓN DE TÉCNICOS --- */
+        /* --- BLOQUE DE TÉCNICOS --- */
         .tecnicos-container {
             margin-top: 15px;
             border-top: 1px dashed var(--border-color);
@@ -201,10 +208,10 @@
             display: grid;
             grid-template-columns: 1fr auto;
             gap: 8px;
-            margin-bottom: 10px;
-            align-items: center;
+            margin-bottom: 12px;
+            align-items: flex-end;
             background: #f1f5f9;
-            padding: 8px;
+            padding: 10px;
             border-radius: 6px;
         }
 
@@ -212,6 +219,7 @@
             display: flex;
             flex-direction: column;
             gap: 4px;
+            width: 100%;
         }
 
         .tecnico-header-row {
@@ -240,7 +248,7 @@
             background: #e2e8f0;
             color: var(--primary);
             border: 1px dashed var(--border-color);
-            padding: 10px;
+            padding: 12px;
             border-radius: var(--radius);
             font-size: 0.75rem;
             font-weight: bold;
@@ -281,7 +289,7 @@
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(15, 23, 42, 0.7);
-            z-index: 999;
+            z-index: 9999;
             justify-content: center;
             align-items: center;
             color: #fff;
@@ -342,22 +350,26 @@
             document.getElementById("btnAddCuadrilla").addEventListener("click", () => addNewCuadrilla());
             document.getElementById("mainForm").addEventListener("submit", handleSubmit);
 
-            // Cierre global de menus al tocar fuera de cualquier dropdown flotante
-            document.addEventListener("click", (e) => {
+            // Cierre global cuando se presione/toque fuera de cualquier desplegable
+            document.addEventListener("pointerdown", (e) => {
                 if (!e.target.closest(".custom-dropdown-container")) {
-                    document.querySelectorAll(".custom-dropdown-container").forEach(el => el.classList.remove("open"));
+                    closeAllDropdowns();
                 }
             });
         });
 
+        function closeAllDropdowns() {
+            document.querySelectorAll(".custom-dropdown-container").forEach(el => el.classList.remove("open"));
+        }
+
         async function loadMasterData() {
             try {
                 const response = await fetch(WEB_APP_URL);
-                if (!response.ok) throw new Error("Error en red");
+                if (!response.ok) throw new Error("Error en respuesta red");
                 globalData = await response.json();
                 updateAllDropdowns();
             } catch (err) {
-                console.warn("Error al cargar datos remotos. El sistema operará en texto libre.", err);
+                console.warn("Modo offline o error al cargar datos del backend:", err);
             }
         }
 
@@ -430,7 +442,7 @@
 
             container.appendChild(card);
             
-            // Inicializar controladores para el Coordinador y la Placa en esta cuadrilla
+            // Inicializar eventos de Coordinador y Placa
             initCustomDropdown(card.querySelector(".input-coordinador"));
             initCustomDropdown(card.querySelector(".input-placa"));
 
@@ -453,32 +465,41 @@
             const container = inputElement.closest(".custom-dropdown-container");
             const menu = container.querySelector(".custom-dropdown-menu");
 
+            if (!container._optionsList) {
+                container._optionsList = [];
+            }
+
             const renderOptions = (filterText = "") => {
-                const options = JSON.parse(container.dataset.options || "[]");
+                const options = container._optionsList || [];
                 const search = filterText.trim().toUpperCase();
-                
                 const filtered = options.filter(opt => opt.toUpperCase().includes(search));
 
                 if (filtered.length === 0) {
-                    menu.innerHTML = `<div class="dropdown-no-results">Sin coincidencias (se guardará como texto libre)</div>`;
+                    menu.innerHTML = `<div class="dropdown-no-results">Sin coincidencias (conservará texto libre)</div>`;
                 } else {
                     menu.innerHTML = filtered.map(opt => `<div class="dropdown-item" data-value="${opt}">${opt}</div>`).join("");
                 }
             };
 
-            inputElement.addEventListener("focus", () => {
-                document.querySelectorAll(".custom-dropdown-container").forEach(el => el.classList.remove("open"));
+            const openMenu = () => {
+                closeAllDropdowns();
                 container.classList.add("open");
                 renderOptions(inputElement.value);
-            });
+            };
+
+            // Eventos garantizados para touch / móvil y escritorio
+            inputElement.addEventListener("focus", openMenu);
+            inputElement.addEventListener("click", openMenu);
 
             inputElement.addEventListener("input", () => {
                 inputElement.value = inputElement.value.toUpperCase();
-                container.classList.add("open");
+                if (!container.classList.contains("open")) {
+                    container.classList.add("open");
+                }
                 renderOptions(inputElement.value);
             });
 
-            menu.addEventListener("click", (e) => {
+            menu.addEventListener("pointerdown", (e) => {
                 const item = e.target.closest(".dropdown-item");
                 if (item) {
                     inputElement.value = item.dataset.value;
@@ -506,13 +527,13 @@
                 .map(p => p.nombre);
             
             const coordContainer = card.querySelector(".input-coordinador").closest(".custom-dropdown-container");
-            coordContainer.dataset.options = JSON.stringify(coordinadores);
+            coordContainer._optionsList = Array.from(new Set(coordinadores));
 
             // 2. Placas (Globales)
             const placaContainer = card.querySelector(".input-placa").closest(".custom-dropdown-container");
-            placaContainer.dataset.options = JSON.stringify(globalData.placas);
+            placaContainer._optionsList = Array.from(new Set(globalData.placas));
 
-            // 3. Actualizar técnicos dinámicos existentes según Sede y Cargo
+            // 3. Actualizar técnicos dinámicos existentes
             card.querySelectorAll(".tecnico-row").forEach(row => {
                 const tipo = row.dataset.tipo;
                 const techContainer = row.querySelector(".input-nombre-tecnico").closest(".custom-dropdown-container");
@@ -520,7 +541,7 @@
                     .filter(p => p.cargo.includes(tipo))
                     .map(p => p.nombre);
                 
-                techContainer.dataset.options = JSON.stringify(listTech);
+                techContainer._optionsList = Array.from(new Set(listTech));
             });
         }
 
@@ -530,7 +551,7 @@
             const sedeActual = card.querySelector(".input-sede").value;
             
             const filteredPersonal = globalData.personal.filter(p => (!sedeActual || p.sede === sedeActual) && p.cargo.includes(tipo));
-            const opcionesTecnico = filteredPersonal.map(p => p.nombre);
+            const opcionesTecnico = Array.from(new Set(filteredPersonal.map(p => p.nombre)));
 
             const row = document.createElement("div");
             row.className = "tecnico-row";
@@ -548,10 +569,10 @@
             
             tecnicosList.appendChild(row);
 
-            // Iniciar componente dropdown dinámico en la nueva fila
+            // Inicialización y vinculación directa de datos al dropdown del nuevo técnico
             const techInput = row.querySelector(".input-nombre-tecnico");
             const techContainer = techInput.closest(".custom-dropdown-container");
-            techContainer.dataset.options = JSON.stringify(opcionesTecnico);
+            techContainer._optionsList = opcionesTecnico;
             
             initCustomDropdown(techInput);
         }
