@@ -4,9 +4,10 @@
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Registro de Cuadrillas</title>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
+    <!-- Librería html2pdf.js para generar PDF cliente -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
     <style>
         @layer base {
             html, body { margin: 0; padding: 0; }
@@ -14,7 +15,6 @@
         }
         ::-webkit-scrollbar { display: none; }
         
-        /* Ajustes para listas flotantes de autocompletado */
         .custom-dropdown-container {
             position: relative;
             width: 100%;
@@ -132,7 +132,6 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
-    
 </head>
 <body class="bg-background font-body text-on-surface uppercase">
 
@@ -158,13 +157,10 @@
     <main class="relative pt-16 min-h-screen bg-background">
         <form id="mainForm" class="flex flex-col w-full px-4 md:px-8 py-8 max-w-[800px] mx-auto min-h-screen pb-32">
             
-            <!-- Contenedor dinámico de Cuadrillas -->
             <div id="cuadrillasContainer" class="flex flex-col gap-8"></div>
 
-            <!-- Imagen decorativa ambiental -->
             <div class="w-full max-w-[800px] h-32 mt-6 bg-cover bg-center rounded-2xl opacity-40 mix-blend-multiply" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCOcxHHvYOOFMkKXimteTE1G-TFePL6NiFuA6FjutFpwFBlySX3lOuCvAaNNUdlrf89Gg4zdZrAxqMNOiOKpxl-5RmeuB6NdAGuXcvWOTZ96zqqwDhM15w_8uSiQHpek4gfQbTw_yuu8EdcryqV6yYVM9X-HrY3c2hLtFTbTA-KxFAKpRuOgiuN-89-CL2hm_2vt1qs7aHTLgeRRtjcobwDqiRzA-p3klDXdzrZ97J79SGOjtehxzSQ');"></div>
             
-            <!-- Barra fija inferior -->
             <div class="fixed bottom-0 left-0 right-0 bg-surface-container-lowest/90 backdrop-blur-md p-4 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] flex justify-center z-40">
                 <div class="w-full max-w-[800px] flex flex-col sm:flex-row gap-4">
                     <button type="button" id="btnAddCuadrilla" class="flex-1 h-[48px] rounded-lg border-2 border-surface-border bg-transparent text-on-surface font-semibold text-sm hover:bg-surface hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-2">
@@ -187,11 +183,10 @@
     </div>
 
     <script>
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzrXmej_xMQ_7kAcxjcQuu0vO0e83CBsMCaFbk-ISa79gM88FJAuy2h3DkdHz7OUWw5gg/exec";
+        const WEB_APP_URL = "AQUÍ_PEGAS_TU_URL_DE_APPS_SCRIPT";
 
         let globalData = { sedes: [], placas: [], personal: [] };
 
-        // Normalizador de texto para búsquedas sin tildes
         function normalizeText(text) {
             return String(text || "")
                 .toUpperCase()
@@ -200,7 +195,6 @@
                 .trim();
         }
 
-        // Validador flexible de cargos
         function matchesCargo(cargoDB, tipoRequerido) {
             const cargoNorm = normalizeText(cargoDB);
             const tipoNorm = normalizeText(tipoRequerido);
@@ -216,7 +210,6 @@
         }
 
         document.addEventListener("DOMContentLoaded", async () => {
-            // Setea fecha superior
             const now = new Date();
             const options = { day: '2-digit', month: 'short', year: 'numeric' };
             document.getElementById("currentDateDisplay").innerText = now.toLocaleDateString('es-ES', options).toUpperCase();
@@ -275,7 +268,6 @@
             card.innerHTML = `
                 <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full -mr-8 -mt-8 pointer-events-none"></div>
                 
-                <!-- Card Header -->
                 <div class="flex items-center justify-between mb-2 relative">
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
@@ -293,7 +285,6 @@
                     ` : ''}
                 </div>
 
-                <!-- Sede -->
                 <div class="flex flex-col gap-2">
                     <label class="text-xs font-bold text-on-surface-variant">SEDE DE OPERACIONES</label>
                     <div class="relative w-full">
@@ -305,13 +296,11 @@
                     </div>
                 </div>
 
-                <!-- Nombre del Coordinador -->
                 <div class="flex flex-col gap-2">
                     <label class="text-xs font-bold text-on-surface-variant">NOMBRE DEL COORDINADOR</label>
                     ${createCustomDropdownHtml("input-coordinador", "SELECCIONE O DIGITE...", "search")}
                 </div>
 
-                <!-- Grid Date & Vehicle -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="flex flex-col gap-2">
                         <label class="text-xs font-bold text-on-surface-variant">FECHA DE TRABAJO EN CAMPO</label>
@@ -329,7 +318,6 @@
 
                 <div class="h-[1px] w-full bg-gradient-to-r from-transparent via-surface-border to-transparent my-1"></div>
 
-                <!-- Técnicos Section -->
                 <div class="flex flex-col gap-4">
                     <div class="flex items-center justify-between">
                         <label class="text-xs font-bold text-on-surface-variant">TÉCNICOS DE LA CUADRILLA</label>
@@ -352,7 +340,6 @@
 
                 <div class="h-[1px] w-full bg-gradient-to-r from-transparent via-surface-border to-transparent my-1"></div>
 
-                <!-- Usuario -->
                 <div class="flex flex-col gap-2">
                     <div class="flex justify-between items-end">
                         <label class="text-xs font-bold text-on-surface-variant">USUARIO</label>
@@ -453,7 +440,6 @@
                 return !sedeActualNorm || normalizeText(p.sede) === sedeActualNorm;
             });
 
-            // 1. Coordinadores por Sede
             const coordinadores = filteredPersonal
                 .filter(p => matchesCargo(p.cargo, "COORDINADOR"))
                 .map(p => p.nombre);
@@ -461,11 +447,9 @@
             const coordContainer = card.querySelector(".input-coordinador").closest(".custom-dropdown-container");
             coordContainer._optionsList = Array.from(new Set(coordinadores));
 
-            // 2. Placas
             const placaContainer = card.querySelector(".input-placa").closest(".custom-dropdown-container");
             placaContainer._optionsList = Array.from(new Set(globalData.placas));
 
-            // 3. Técnicos en la tarjeta
             card.querySelectorAll(".tecnico-row").forEach(row => {
                 const tipo = row.dataset.tipo;
                 const techInput = row.querySelector(".input-nombre-tecnico");
@@ -533,6 +517,77 @@
             }
         }
 
+        // Función para compilar a PDF y abrir diálogo para WhatsApp/Compartir
+        async function generateAndSharePDF(payload) {
+            showLoading("Generando PDF para compartir...");
+
+            const printElement = document.createElement("div");
+            printElement.style.padding = "20px";
+            printElement.style.fontFamily = "Arial, sans-serif";
+            printElement.style.color = "#191c1e";
+
+            let contenidoHtml = `
+                <div style="text-align: center; border-bottom: 2px solid #003f87; padding-bottom: 10px; margin-bottom: 20px;">
+                    <h1 style="color: #003f87; margin: 0; font-size: 20px;">RESUMEN DE REGISTRO DE CUADRILLAS</h1>
+                    <p style="margin: 5px 0 0 0; font-size: 12px; color: #565e74;">FECHA DE EMISIÓN: ${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES')}</p>
+                </div>
+            `;
+
+            payload.forEach((c, idx) => {
+                contenidoHtml += `
+                    <div style="border: 1px solid #E2E8F0; border-radius: 8px; padding: 15px; margin-bottom: 15px; page-break-inside: avoid;">
+                        <h3 style="color: #003f87; margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 5px;">CUADRILLA #${idx + 1}</h3>
+                        <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+                            <tr><td style="padding: 4px; font-weight: bold; width: 30%;">SEDE:</td><td style="padding: 4px;">${c.sede}</td></tr>
+                            <tr><td style="padding: 4px; font-weight: bold;">COORDINADOR:</td><td style="padding: 4px;">${c.coordinador}</td></tr>
+                            <tr><td style="padding: 4px; font-weight: bold;">FECHA TRABAJO:</td><td style="padding: 4px;">${c.fechaHora}</td></tr>
+                            <tr><td style="padding: 4px; font-weight: bold;">PLACA VEHÍCULO:</td><td style="padding: 4px;">${c.placa}</td></tr>
+                            <tr><td style="padding: 4px; font-weight: bold;">USUARIO:</td><td style="padding: 4px;">${c.usuario || 'N/A'}</td></tr>
+                        </table>
+                        <h4 style="margin: 10px 0 5px 0; font-size: 12px; color: #565e74;">TÉCNICOS ASIGNADOS:</h4>
+                        <ul style="margin: 0; padding-left: 20px; font-size: 12px;">
+                            ${c.integrantes.map(t => `<li><strong>[${t.cargo}]</strong> ${t.nombre}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            });
+
+            printElement.innerHTML = contenidoHtml;
+
+            const fileName = `Registro_Cuadrillas_${new Date().toISOString().split('T')[0]}.pdf`;
+            const opt = {
+                margin: 10,
+                filename: fileName,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            try {
+                const pdfWorker = html2pdf().set(opt).from(printElement);
+                const pdfBlob = await pdfWorker.output('blob');
+                const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+                hideLoading();
+
+                // Intentar compartir vía API nativa del navegador (Android / iOS)
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        title: 'Registro de Cuadrillas',
+                        text: 'Adjunto el PDF con el resumen de las cuadrillas registradas.',
+                        files: [file]
+                    });
+                } else {
+                    // Si es PC o navegador sin soporte nativo de compartir archivo
+                    html2pdf().set(opt).from(printElement).save();
+                    alert("El PDF se guardó correctamente en Google Sheets y se ha descargado a tu equipo.");
+                }
+            } catch (err) {
+                console.error("Error al generar PDF:", err);
+                hideLoading();
+            }
+        }
+
         async function handleSubmit(e) {
             e.preventDefault();
             const btnSubmit = document.getElementById("btnSubmit");
@@ -563,6 +618,7 @@
                     payload.push({ sede, coordinador, fechaHora, placa, usuario, integrantes });
                 });
 
+                // 1. Guardar primero en Google Sheets
                 const response = await fetch(WEB_APP_URL, {
                     method: "POST",
                     body: JSON.stringify(payload)
@@ -570,12 +626,10 @@
 
                 const result = await response.json();
 
-                // Y REEMPLÁZALA POR ESTA:
                 if (result.status === "success") {
-                    // Primero genera y lanza la opción de compartir el PDF
+                    // 2. Generar PDF y abrir opción de compartir (WhatsApp, etc.)
                     await generateAndSharePDF(payload);
-                    
-                    // Opcional: recarga la página después de completar
+
                     setTimeout(() => {
                         location.reload();
                     }, 1000);
@@ -599,11 +653,6 @@
         function hideLoading() {
             document.getElementById("loadingOverlay").style.display = "none";
         }
-
-
-        
-        
-        
     </script>
 </body>
 </html>
