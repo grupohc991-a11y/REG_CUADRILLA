@@ -381,32 +381,38 @@
         function initCustomDropdown(inputElement) {
             const container = inputElement.closest(".custom-dropdown-container");
             const menu = container.querySelector(".custom-dropdown-menu");
-
+        
             if (!container._optionsList) {
                 container._optionsList = [];
             }
-
+        
             const renderOptions = (filterText = "") => {
                 const options = container._optionsList || [];
                 const searchNorm = normalizeText(filterText);
                 const filtered = options.filter(opt => normalizeText(opt).includes(searchNorm));
-
+        
                 if (filtered.length === 0) {
-                    menu.innerHTML = `<div class="dropdown-no-results">SIN COINCIDENCIAS (CONSERVARÁ TEXTO LIBRE)</div>`;
+                    menu.innerHTML = `<div class="dropdown-no-results" style="padding: 10px; font-size: 12px; color: #888;">SIN COINCIDENCIAS</div>`;
                 } else {
-                    menu.innerHTML = filtered.map(opt => `<div class="dropdown-item" data-value="${opt}">${opt}</div>`).join("");
+                    menu.innerHTML = filtered.map(opt => `<div class="dropdown-item cursor-pointer p-2 hover:bg-surface-container-low text-xs" data-value="${opt}">${opt}</div>`).join("");
                 }
             };
-
+        
             const openMenu = () => {
+                // ACTUALIZACIÓN CLAVE: Si es un campo dentro de una tarjeta, refresca las opciones por si cambió la sede antes de abrir
+                const card = container.closest(".cuadrilla-card");
+                if (card) {
+                    updateCardOptions(card);
+                }
+        
                 closeAllDropdowns();
                 container.classList.add("open");
                 renderOptions(inputElement.value);
             };
-
+        
             inputElement.addEventListener("focus", openMenu);
             inputElement.addEventListener("click", openMenu);
-
+        
             inputElement.addEventListener("input", () => {
                 inputElement.value = inputElement.value.toUpperCase();
                 if (!container.classList.contains("open")) {
@@ -414,7 +420,7 @@
                 }
                 renderOptions(inputElement.value);
             });
-
+        
             menu.addEventListener("pointerdown", (e) => {
                 const item = e.target.closest(".dropdown-item");
                 if (item) {
@@ -435,30 +441,34 @@
 
         function updateCardOptions(card) {
             const sedeActualNorm = normalizeText(card.querySelector(".input-sede").value);
-
+        
+            // Filtrar personal por sede seleccionada
             const filteredPersonal = globalData.personal.filter(p => {
                 return !sedeActualNorm || normalizeText(p.sede) === sedeActualNorm;
             });
-
+        
+            // 1. Opciones Coordinador
             const coordinadores = filteredPersonal
                 .filter(p => matchesCargo(p.cargo, "COORDINADOR"))
                 .map(p => p.nombre);
-
+        
             const coordContainer = card.querySelector(".input-coordinador").closest(".custom-dropdown-container");
             coordContainer._optionsList = Array.from(new Set(coordinadores));
-
+        
+            // 2. Opciones Placa
             const placaContainer = card.querySelector(".input-placa").closest(".custom-dropdown-container");
             placaContainer._optionsList = Array.from(new Set(globalData.placas));
-
+        
+            // 3. Opciones Técnicos ya agregados
             card.querySelectorAll(".tecnico-row").forEach(row => {
                 const tipo = row.dataset.tipo;
                 const techInput = row.querySelector(".input-nombre-tecnico");
                 const techContainer = techInput.closest(".custom-dropdown-container");
-
+        
                 const listTech = filteredPersonal
                     .filter(p => matchesCargo(p.cargo, tipo))
                     .map(p => p.nombre);
-
+        
                 techContainer._optionsList = Array.from(new Set(listTech));
             });
         }
