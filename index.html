@@ -183,7 +183,7 @@
     </div>
 
     <script>
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzrXmej_xMQ_7kAcxjcQuu0vO0e83CBsMCaFbk-ISa79gM88FJAuy2h3DkdHz7OUWw5gg/exec";
+        const WEB_APP_URL = "AQUÍ_PEGAS_TU_URL_DE_APPS_SCRIPT";
 
         let globalData = { sedes: [], placas: [], personal: [] };
 
@@ -381,38 +381,32 @@
         function initCustomDropdown(inputElement) {
             const container = inputElement.closest(".custom-dropdown-container");
             const menu = container.querySelector(".custom-dropdown-menu");
-        
+
             if (!container._optionsList) {
                 container._optionsList = [];
             }
-        
+
             const renderOptions = (filterText = "") => {
                 const options = container._optionsList || [];
                 const searchNorm = normalizeText(filterText);
                 const filtered = options.filter(opt => normalizeText(opt).includes(searchNorm));
-        
+
                 if (filtered.length === 0) {
-                    menu.innerHTML = `<div class="dropdown-no-results" style="padding: 10px; font-size: 12px; color: #888;">SIN COINCIDENCIAS</div>`;
+                    menu.innerHTML = `<div class="dropdown-no-results">SIN COINCIDENCIAS (CONSERVARÁ TEXTO LIBRE)</div>`;
                 } else {
-                    menu.innerHTML = filtered.map(opt => `<div class="dropdown-item cursor-pointer p-2 hover:bg-surface-container-low text-xs" data-value="${opt}">${opt}</div>`).join("");
+                    menu.innerHTML = filtered.map(opt => `<div class="dropdown-item" data-value="${opt}">${opt}</div>`).join("");
                 }
             };
-        
+
             const openMenu = () => {
-                // ACTUALIZACIÓN CLAVE: Si es un campo dentro de una tarjeta, refresca las opciones por si cambió la sede antes de abrir
-                const card = container.closest(".cuadrilla-card");
-                if (card) {
-                    updateCardOptions(card);
-                }
-        
                 closeAllDropdowns();
                 container.classList.add("open");
                 renderOptions(inputElement.value);
             };
-        
+
             inputElement.addEventListener("focus", openMenu);
             inputElement.addEventListener("click", openMenu);
-        
+
             inputElement.addEventListener("input", () => {
                 inputElement.value = inputElement.value.toUpperCase();
                 if (!container.classList.contains("open")) {
@@ -420,7 +414,7 @@
                 }
                 renderOptions(inputElement.value);
             });
-        
+
             menu.addEventListener("pointerdown", (e) => {
                 const item = e.target.closest(".dropdown-item");
                 if (item) {
@@ -441,34 +435,30 @@
 
         function updateCardOptions(card) {
             const sedeActualNorm = normalizeText(card.querySelector(".input-sede").value);
-        
-            // Filtrar personal por sede seleccionada
+
             const filteredPersonal = globalData.personal.filter(p => {
                 return !sedeActualNorm || normalizeText(p.sede) === sedeActualNorm;
             });
-        
-            // 1. Opciones Coordinador
+
             const coordinadores = filteredPersonal
                 .filter(p => matchesCargo(p.cargo, "COORDINADOR"))
                 .map(p => p.nombre);
-        
+
             const coordContainer = card.querySelector(".input-coordinador").closest(".custom-dropdown-container");
             coordContainer._optionsList = Array.from(new Set(coordinadores));
-        
-            // 2. Opciones Placa
+
             const placaContainer = card.querySelector(".input-placa").closest(".custom-dropdown-container");
             placaContainer._optionsList = Array.from(new Set(globalData.placas));
-        
-            // 3. Opciones Técnicos ya agregados
+
             card.querySelectorAll(".tecnico-row").forEach(row => {
                 const tipo = row.dataset.tipo;
                 const techInput = row.querySelector(".input-nombre-tecnico");
                 const techContainer = techInput.closest(".custom-dropdown-container");
-        
+
                 const listTech = filteredPersonal
                     .filter(p => matchesCargo(p.cargo, tipo))
                     .map(p => p.nombre);
-        
+
                 techContainer._optionsList = Array.from(new Set(listTech));
             });
         }
@@ -530,29 +520,22 @@
         // Función para compilar a PDF y abrir diálogo para WhatsApp/Compartir
         async function generateAndSharePDF(payload) {
             showLoading("Generando PDF para compartir...");
-        
-            // 1. Crear el contenedor y AGREGARLO AL BODY (esencial para que html2canvas lo renderice)
+
             const printElement = document.createElement("div");
-            printElement.id = "pdf-temp-container";
-            printElement.style.position = "absolute";
-            printElement.style.left = "-9999px"; // Lo oculta fuera de la vista pero dentro del DOM
-            printElement.style.top = "0";
-            printElement.style.width = "750px"; // Ancho fijo estándar A4
             printElement.style.padding = "20px";
             printElement.style.fontFamily = "Arial, sans-serif";
             printElement.style.color = "#191c1e";
-            printElement.style.backgroundColor = "#ffffff";
-        
+
             let contenidoHtml = `
                 <div style="text-align: center; border-bottom: 2px solid #003f87; padding-bottom: 10px; margin-bottom: 20px;">
                     <h1 style="color: #003f87; margin: 0; font-size: 20px;">RESUMEN DE REGISTRO DE CUADRILLAS</h1>
                     <p style="margin: 5px 0 0 0; font-size: 12px; color: #565e74;">FECHA DE EMISIÓN: ${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES')}</p>
                 </div>
             `;
-        
+
             payload.forEach((c, idx) => {
                 contenidoHtml += `
-                    <div style="border: 1px solid #E2E8F0; border-radius: 8px; padding: 15px; margin-bottom: 15px; background: #ffffff;">
+                    <div style="border: 1px solid #E2E8F0; border-radius: 8px; padding: 15px; margin-bottom: 15px; page-break-inside: avoid;">
                         <h3 style="color: #003f87; margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 5px;">CUADRILLA #${idx + 1}</h3>
                         <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
                             <tr><td style="padding: 4px; font-weight: bold; width: 30%;">SEDE:</td><td style="padding: 4px;">${c.sede}</td></tr>
@@ -568,31 +551,26 @@
                     </div>
                 `;
             });
-        
+
             printElement.innerHTML = contenidoHtml;
-            document.body.appendChild(printElement); // Se inserta en el DOM
-        
+
             const fileName = `Registro_Cuadrillas_${new Date().toISOString().split('T')[0]}.pdf`;
-        
             const opt = {
                 margin: 10,
                 filename: fileName,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, scrollY: 0 },
+                html2canvas: { scale: 2 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
-        
+
             try {
-                // Generar Blob
-                const worker = html2pdf().set(opt).from(printElement);
-                const pdfBlob = await worker.output('blob');
-                
-                // Limpiar el elemento del DOM tras procesar
-                document.body.removeChild(printElement);
-        
+                const pdfWorker = html2pdf().set(opt).from(printElement);
+                const pdfBlob = await pdfWorker.output('blob');
                 const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
                 hideLoading();
-        
+
+                // Intentar compartir vía API nativa del navegador (Android / iOS)
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     await navigator.share({
                         title: 'Registro de Cuadrillas',
@@ -600,18 +578,12 @@
                         files: [file]
                     });
                 } else {
-                    // Guardado tradicional
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(pdfBlob);
-                    link.download = fileName;
-                    link.click();
-                    alert("El PDF se generó exitosamente.");
+                    // Si es PC o navegador sin soporte nativo de compartir archivo
+                    html2pdf().set(opt).from(printElement).save();
+                    alert("El PDF se guardó correctamente en Google Sheets y se ha descargado a tu equipo.");
                 }
             } catch (err) {
                 console.error("Error al generar PDF:", err);
-                if (document.getElementById("pdf-temp-container")) {
-                    document.body.removeChild(printElement);
-                }
                 hideLoading();
             }
         }
