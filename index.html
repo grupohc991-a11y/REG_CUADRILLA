@@ -525,7 +525,7 @@
     
         // FUNCIÓN DE GENERACIÓN DE PDF CORREGIDA
         async function generateAndSharePDF(payload) {
-            showLoading("Preparando PDF para compartir...");
+            showLoading("Preparando PDF...");
     
             const sedesUnicas = Array.from(new Set(payload.map(p => p.sede).filter(Boolean)));
             let sedeNombre = "GENERAL";
@@ -538,7 +538,6 @@
             const dateStr = new Date().toISOString().split('T')[0];
             const fileName = `Registro_Cuadrillas_${sedeNombre}_${dateStr}.pdf`;
     
-            // Crear contenedor completamente VISIBLE para asegurar el render de html2canvas
             const printElement = document.createElement("div");
             printElement.style.width = "650px";
             printElement.style.padding = "20px";
@@ -547,7 +546,7 @@
             printElement.style.position = "fixed";
             printElement.style.top = "0";
             printElement.style.left = "0";
-            printElement.style.zIndex = "999999"; // Queda al frente visible momentáneamente para la captura
+            printElement.style.zIndex = "999999";
     
             let contenidoHtml = `
                 <div style="font-family: Arial, sans-serif; color: #000000;">
@@ -583,16 +582,13 @@
             printElement.innerHTML = contenidoHtml;
             document.body.appendChild(printElement);
     
-            // Pequeña pausa para asegurar la renderización en pantalla antes de convertir a Canvas
-            await new Promise(resolve => setTimeout(resolve, 300));
+            await new Promise(resolve => setTimeout(resolve, 200));
     
             try {
                 const canvas = await html2canvas(printElement, { scale: 2, useCORS: true });
-                document.body.removeChild(printElement);
+                if (document.body.contains(printElement)) document.body.removeChild(printElement);
     
                 const imgData = canvas.toDataURL('image/jpeg', 0.95);
-                
-                // Detección segura de la librería jsPDF
                 const jsPDFLib = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
                 const pdf = new jsPDFLib('p', 'mm', 'a4');
                 
@@ -606,15 +602,27 @@
     
                 hideLoading();
     
+                // Intento seguro con try-catch directo en el share
                 if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({
-                        title: `Registro Cuadrillas - ${sedeNombre}`,
-                        files: [file]
-                    });
-                    location.reload();
-                } else {
-                    alert("Menú de compartir enviado.");
+                    try {
+                        await navigator.share({
+                            title: `Registro Cuadrillas - ${sedeNombre}`,
+                            files: [file]
+                        });
+                        location.reload();
+                        return;
+                    } catch (shareError) {
+                        console.warn("Permiso de usuario expirado para share nativo:", shareError);
+                    }
                 }
+    
+                // Fallback: Si el navegador bloquea el gesto de usuario, abre el PDF directamente en una pestaña
+                const fileURL = URL.createObjectURL(pdfBlob);
+                window.open(fileURL, '_blank');
+                
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
     
             } catch (err) {
                 if (document.body.contains(printElement)) document.body.removeChild(printElement);
