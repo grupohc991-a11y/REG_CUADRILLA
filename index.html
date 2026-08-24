@@ -522,124 +522,108 @@
     
         // FUNCIÓN DE GENERACIÓN DE PDF CORREGIDA
         async function generateAndSharePDF(payload) {
-        showLoading("Generando PDF...");
-
-        // 1. Configuración del nombre del archivo con SEDE
-        const sedesUnicas = Array.from(new Set(payload.map(p => p.sede).filter(Boolean)));
-        let sedeNombre = "GENERAL";
-        if (sedesUnicas.length === 1) {
-            sedeNombre = sedesUnicas[0].replace(/[^a-zA-Z0-9]/g, "_").toUpperCase();
-        } else if (sedesUnicas.length > 1) {
-            sedeNombre = "MULTISEDE";
-        }
-
-        const dateStr = new Date().toISOString().split('T')[0];
-        const fileName = `Registro_Cuadrillas_${sedeNombre}_${dateStr}.pdf`;
-
-        // 2. Creación del contenedor HTML visible
-        const printElement = document.createElement("div");
-        printElement.id = "pdf-temp-container";
-        printElement.style.width = "700px";
-        printElement.style.padding = "20px";
-        printElement.style.background = "#ffffff";
-        printElement.style.color = "#000000";
-        printElement.style.position = "absolute";
-        printElement.style.top = "0";
-        printElement.style.left = "0";
-        printElement.style.zIndex = "100";
-
-        let contenidoHtml = `
-            <div style="text-align: center; border-bottom: 2px solid #003f87; padding-bottom: 10px; margin-bottom: 20px;">
-                <h1 style="color: #003f87; margin: 0; font-size: 20px; font-weight: bold;">RESUMEN DE REGISTRO DE CUADRILLAS</h1>
-                <p style="margin: 5px 0 0 0; font-size: 12px; color: #555555;">SEDE: ${sedeNombre} | FECHA: ${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES')}</p>
-            </div>
-        `;
-
-        payload.forEach((c, idx) => {
-            contenidoHtml += `
-                <div style="border: 1px solid #CCCCCC; border-radius: 6px; padding: 12px; margin-bottom: 15px; background: #FFFFFF; page-break-inside: avoid;">
-                    <h3 style="color: #003f87; margin-top: 0; margin-bottom: 8px; border-bottom: 1px solid #EEEEEE; padding-bottom: 4px; font-size: 14px;">CUADRILLA #${idx + 1}</h3>
-                    <table style="width: 100%; font-size: 11px; border-collapse: collapse; margin-bottom: 8px;">
-                        <tr><td style="padding: 3px; font-weight: bold; width: 30%;">SEDE DE OPERACIÓN:</td><td style="padding: 3px;">${c.sede || 'N/A'}</td></tr>
-                        <tr><td style="padding: 3px; font-weight: bold;">COORDINADOR:</td><td style="padding: 3px;">${c.coordinador || 'N/A'}</td></tr>
-                        <tr><td style="padding: 3px; font-weight: bold;">FECHA EN CAMPO:</td><td style="padding: 3px;">${c.fechaHora || 'N/A'}</td></tr>
-                        <tr><td style="padding: 3px; font-weight: bold;">PLACA VEHÍCULO:</td><td style="padding: 3px;">${c.placa || 'N/A'}</td></tr>
-                        <tr><td style="padding: 3px; font-weight: bold;">USUARIO REGISTRO:</td><td style="padding: 3px;">${c.usuario || 'N/A'}</td></tr>
-                    </table>
-                    <div style="font-size: 11px; font-weight: bold; color: #333333; margin-top: 6px; border-top: 1px dashed #DDD; padding-top: 4px;">TÉCNICOS ASIGNADOS (${c.integrantes.length}):</div>
-                    <ul style="margin: 4px 0 0 0; padding-left: 18px; font-size: 11px;">
-                        ${c.integrantes.length > 0 
-                            ? c.integrantes.map(t => `<li style="margin-bottom: 2px;"><strong>[${t.cargo}]</strong> ${t.nombre}</li>`).join('')
-                            : '<li style="color: #777777;">Sin técnicos registrados</li>'
-                        }
-                    </ul>
-                </div>
-            `;
-        });
-
-        printElement.innerHTML = contenidoHtml;
-        document.body.appendChild(printElement);
-
-        const opt = {
-            margin:       [10, 10, 10, 10],
-            filename:     fileName,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, logging: false, scrollY: 0 },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-
-        try {
-            const pdfBlob = await html2pdf().set(opt).from(printElement).output('blob');
-            
-            if (document.getElementById("pdf-temp-container")) {
-                document.body.removeChild(printElement);
+            showLoading("Preparando PDF para compartir...");
+    
+            const sedesUnicas = Array.from(new Set(payload.map(p => p.sede).filter(Boolean)));
+            let sedeNombre = "GENERAL";
+            if (sedesUnicas.length === 1) {
+                sedeNombre = sedesUnicas[0].replace(/[^a-zA-Z0-9]/g, "_").toUpperCase();
+            } else if (sedesUnicas.length > 1) {
+                sedeNombre = "MULTISEDE";
             }
-
-            const file = new File([pdfBlob], fileName, { type: 'application/pdf', lastModified: Date.now() });
-            hideLoading();
-
-            // 3. Intento seguro de Compartir / Fallback a Descarga Directa
-            let sharedSuccessfully = false;
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                try {
+    
+            const dateStr = new Date().toISOString().split('T')[0];
+            const fileName = `Registro_Cuadrillas_${sedeNombre}_${dateStr}.pdf`;
+    
+            // Crear contenedor completamente VISIBLE para asegurar el render de html2canvas
+            const printElement = document.createElement("div");
+            printElement.style.width = "650px";
+            printElement.style.padding = "20px";
+            printElement.style.background = "#ffffff";
+            printElement.style.color = "#000000";
+            printElement.style.position = "fixed";
+            printElement.style.top = "0";
+            printElement.style.left = "0";
+            printElement.style.zIndex = "999999"; // Queda al frente visible momentáneamente para la captura
+    
+            let contenidoHtml = `
+                <div style="font-family: Arial, sans-serif; color: #000000;">
+                    <div style="text-align: center; border-bottom: 2px solid #003f87; padding-bottom: 10px; margin-bottom: 20px;">
+                        <h1 style="color: #003f87; margin: 0; font-size: 18px; font-weight: bold;">RESUMEN DE REGISTRO DE CUADRILLAS</h1>
+                        <p style="margin: 5px 0 0 0; font-size: 11px; color: #333333;">SEDE: ${sedeNombre} | FECHA: ${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES')}</p>
+                    </div>
+            `;
+    
+            payload.forEach((c, idx) => {
+                contenidoHtml += `
+                    <div style="border: 1px solid #000000; border-radius: 4px; padding: 10px; margin-bottom: 12px; background: #ffffff;">
+                        <h3 style="color: #003f87; margin: 0 0 6px 0; border-bottom: 1px solid #cccccc; padding-bottom: 4px; font-size: 13px;">CUADRILLA #${idx + 1}</h3>
+                        <table style="width: 100%; font-size: 10px; border-collapse: collapse; margin-bottom: 6px;">
+                            <tr><td style="padding: 2px; font-weight: bold; width: 35%;">SEDE DE OPERACIÓN:</td><td style="padding: 2px;">${c.sede || 'N/A'}</td></tr>
+                            <tr><td style="padding: 2px; font-weight: bold;">COORDINADOR:</td><td style="padding: 2px;">${c.coordinador || 'N/A'}</td></tr>
+                            <tr><td style="padding: 2px; font-weight: bold;">FECHA EN CAMPO:</td><td style="padding: 2px;">${c.fechaHora || 'N/A'}</td></tr>
+                            <tr><td style="padding: 2px; font-weight: bold;">PLACA VEHÍCULO:</td><td style="padding: 2px;">${c.placa || 'N/A'}</td></tr>
+                            <tr><td style="padding: 2px; font-weight: bold;">USUARIO REGISTRO:</td><td style="padding: 2px;">${c.usuario || 'N/A'}</td></tr>
+                        </table>
+                        <div style="font-size: 10px; font-weight: bold; margin-top: 4px; border-top: 1px dashed #aaaaaa; padding-top: 4px;">TÉCNICOS ASIGNADOS (${c.integrantes.length}):</div>
+                        <ul style="margin: 2px 0 0 0; padding-left: 15px; font-size: 10px;">
+                            ${c.integrantes.length > 0 
+                                ? c.integrantes.map(t => `<li style="margin-bottom: 2px;"><strong>[${t.cargo}]</strong> ${t.nombre}</li>`).join('')
+                                : '<li>Sin técnicos registrados</li>'
+                            }
+                        </ul>
+                    </div>
+                `;
+            });
+    
+            contenidoHtml += `</div>`;
+            printElement.innerHTML = contenidoHtml;
+            document.body.appendChild(printElement);
+    
+            // Pequeña pausa para asegurar la renderización en pantalla antes de convertir a Canvas
+            await new Promise(resolve => setTimeout(resolve, 300));
+    
+            try {
+                const canvas = await html2canvas(printElement, { scale: 2, useCORS: true });
+                document.body.removeChild(printElement); // Eliminar el elemento invisible tras la foto
+    
+                const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                
+                pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+    
+                const pdfBlob = pdf.output('blob');
+                const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+    
+                hideLoading();
+    
+                // Abrir el menú de compartir nativo
+                if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
                     await navigator.share({
                         title: `Registro Cuadrillas - ${sedeNombre}`,
-                        text: `Resumen de cuadrillas registradas (${sedeNombre}).`,
                         files: [file]
                     });
-                    sharedSuccessfully = true;
-                } catch (shareErr) {
-                    console.warn("Navegador bloqueó el menú compartir, ejecutando descarga directa:", shareErr);
+                    location.reload();
+                } else {
+                    alert("El navegador no soporta la función de compartir archivos directamente.");
                 }
+    
+            } catch (err) {
+                if (document.body.contains(printElement)) document.body.removeChild(printElement);
+                hideLoading();
+                alert("Error al procesar el PDF: " + err.message);
             }
-
-            // Si el menú de compartir falló o no es compatible, fuerza la descarga directa del archivo
-            if (!sharedSuccessfully) {
-                const downloadUrl = URL.createObjectURL(pdfBlob);
-                const a = document.createElement('a');
-                a.href = downloadUrl;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(downloadUrl);
-            }
-
-        } catch (err) {
-            console.error("Error al generar PDF:", err);
-            if (document.getElementById("pdf-temp-container")) {
-                document.body.removeChild(printElement);
-            }
-            hideLoading();
-            alert("No se pudo generar el documento PDF: " + err.message);
         }
-    }
     
         async function handleSubmit(e) {
             e.preventDefault();
             const btnSubmit = document.getElementById("btnSubmit");
             btnSubmit.disabled = true;
-            showLoading("Guardando registros en Google Sheets...");
+            showLoading("Procesando y generando PDF...");
     
             try {
                 const tarjetas = document.querySelectorAll(".cuadrilla-card");
@@ -665,6 +649,8 @@
                     payload.push({ sede, coordinador, fechaHora, placa, usuario, integrantes });
                 });
     
+                // 1. Guardar primero los datos en Google Sheets
+                showLoading("Guardando en Google Sheets...");
                 const response = await fetch(WEB_APP_URL, {
                     method: "POST",
                     body: JSON.stringify(payload)
@@ -673,19 +659,16 @@
                 const result = await response.json();
     
                 if (result.status === "success") {
+                    // 2. Generar el PDF y abrir el menú Compartir directamente
                     await generateAndSharePDF(payload);
-    
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1000);
                 } else {
-                    throw new Error(result.message || "Error desconocido en el servidor");
+                    throw new Error(result.message || "Error al guardar los datos.");
                 }
     
             } catch (err) {
-                alert("Error al enviar: " + err.message);
-                btnSubmit.disabled = false;
+                alert("Error: " + err.message);
             } finally {
+                btnSubmit.disabled = false;
                 hideLoading();
             }
         }
