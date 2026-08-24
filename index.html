@@ -635,7 +635,7 @@
             e.preventDefault();
             const btnSubmit = document.getElementById("btnSubmit");
             btnSubmit.disabled = true;
-            showLoading("Guardando en Google Sheets...");
+            showLoading("Guardando registros en Google Sheets...");
         
             try {
                 const tarjetas = document.querySelectorAll(".cuadrilla-card");
@@ -661,21 +661,25 @@
                     payload.push({ sede, coordinador, fechaHora, placa, usuario, integrantes });
                 });
         
-                // Petición POST corregida para Google Apps Script
+                // Petición POST adaptable para la redirección de Apps Script
                 const response = await fetch(WEB_APP_URL, {
                     method: "POST",
                     headers: {
-                        "Content-Type": "text/plain;charset=utf-8",
+                        "Content-Type": "text/plain;charset=utf-8"
                     },
                     body: JSON.stringify(payload)
                 });
+        
+                if (!response.ok) {
+                    throw new Error(`Error en el servidor: ${response.status}`);
+                }
         
                 const result = await response.json();
         
                 if (result.status === "success") {
                     await generateAndSharePDF(payload);
                 } else {
-                    throw new Error(result.message || "Error al procesar la respuesta del servidor.");
+                    throw new Error(result.message || "Ocurrió un error al guardar en la hoja.");
                 }
         
             } catch (err) {
