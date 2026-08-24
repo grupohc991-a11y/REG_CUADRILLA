@@ -184,9 +184,9 @@
 
     <script>
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzrXmej_xMQ_7kAcxjcQuu0vO0e83CBsMCaFbk-ISa79gM88FJAuy2h3DkdHz7OUWw5gg/exec";
-
+    
         let globalData = { sedes: [], placas: [], personal: [] };
-
+    
         function normalizeText(text) {
             return String(text || "")
                 .toUpperCase()
@@ -194,11 +194,11 @@
                 .replace(/[\u0300-\u036f]/g, "")
                 .trim();
         }
-
+    
         function matchesCargo(cargoDB, tipoRequerido) {
             const cargoNorm = normalizeText(cargoDB);
             const tipoNorm = normalizeText(tipoRequerido);
-
+    
             if (tipoNorm === 'COORDINADOR') {
                 return cargoNorm.includes("COORDINADOR");
             } else if (tipoNorm === 'T1') {
@@ -208,29 +208,29 @@
             }
             return false;
         }
-
+    
         document.addEventListener("DOMContentLoaded", async () => {
             const now = new Date();
             const options = { day: '2-digit', month: 'short', year: 'numeric' };
             document.getElementById("currentDateDisplay").innerText = now.toLocaleDateString('es-ES', options).toUpperCase();
-
+    
             addNewCuadrilla();
             await loadMasterData();
-
+    
             document.getElementById("btnAddCuadrilla").addEventListener("click", () => addNewCuadrilla());
             document.getElementById("mainForm").addEventListener("submit", handleSubmit);
-
+    
             document.addEventListener("pointerdown", (e) => {
                 if (!e.target.closest(".custom-dropdown-container")) {
                     closeAllDropdowns();
                 }
             });
         });
-
+    
         function closeAllDropdowns() {
             document.querySelectorAll(".custom-dropdown-container").forEach(el => el.classList.remove("open"));
         }
-
+    
         async function loadMasterData() {
             try {
                 showLoading("Cargando personal y placas...");
@@ -244,7 +244,7 @@
                 hideLoading();
             }
         }
-
+    
         function updateAllDropdowns() {
             document.querySelectorAll(".cuadrilla-card").forEach(card => {
                 const sedeSelect = card.querySelector(".input-sede");
@@ -252,19 +252,19 @@
                 sedeSelect.innerHTML = '<option value="" disabled selected>SELECCIONAR SEDE</option>' +
                     globalData.sedes.map(s => `<option value="${s}">${s}</option>`).join('');
                 sedeSelect.value = currentSede;
-
+    
                 updateCardOptions(card);
             });
         }
-
+    
         function addNewCuadrilla() {
             const container = document.getElementById("cuadrillasContainer");
             const index = container.children.length + 1;
-
+    
             const card = document.createElement("div");
             card.className = "cuadrilla-card bg-surface-container-lowest rounded-xl shadow-lg relative p-6 md:p-8 flex flex-col gap-6 overflow-hidden group hover:shadow-xl transition-shadow duration-300";
             card.dataset.id = index;
-
+    
             card.innerHTML = `
                 <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full -mr-8 -mt-8 pointer-events-none"></div>
                 
@@ -284,7 +284,7 @@
                         </button>
                     ` : ''}
                 </div>
-
+    
                 <div class="flex flex-col gap-2">
                     <label class="text-xs font-bold text-on-surface-variant">SEDE DE OPERACIONES</label>
                     <div class="relative w-full">
@@ -295,12 +295,12 @@
                         <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">expand_more</span>
                     </div>
                 </div>
-
+    
                 <div class="flex flex-col gap-2">
                     <label class="text-xs font-bold text-on-surface-variant">NOMBRE DEL COORDINADOR</label>
                     ${createCustomDropdownHtml("input-coordinador", "SELECCIONE O DIGITE...", "search")}
                 </div>
-
+    
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="flex flex-col gap-2">
                         <label class="text-xs font-bold text-on-surface-variant">FECHA DE TRABAJO EN CAMPO</label>
@@ -309,23 +309,23 @@
                             <input class="input-fecha w-full h-[48px] bg-surface pl-10 pr-4 rounded-lg text-on-surface font-semibold text-sm hover:bg-surface-container-low transition-colors outline-none focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest" type="date" value="${new Date().toISOString().split('T')[0]}" required>
                         </div>
                     </div>
-
+    
                     <div class="flex flex-col gap-2">
                         <label class="text-xs font-bold text-on-surface-variant">PLACA DEL VEHÍCULO</label>
                         ${createCustomDropdownHtml("input-placa", "ABC-1234", "local_shipping", true)}
                     </div>
                 </div>
-
+    
                 <div class="h-[1px] w-full bg-gradient-to-r from-transparent via-surface-border to-transparent my-1"></div>
-
+    
                 <div class="flex flex-col gap-4">
                     <div class="flex items-center justify-between">
                         <label class="text-xs font-bold text-on-surface-variant">TÉCNICOS DE LA CUADRILLA</label>
                         <span class="badge-asignados text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-full">0 ASIGNADOS</span>
                     </div>
-
+    
                     <div class="tecnicos-list flex flex-col gap-3"></div>
-
+    
                     <div class="flex flex-col sm:flex-row gap-3 mt-1">
                         <button type="button" onclick="addTecnico(this, 'T1')" class="flex-1 h-[44px] flex items-center justify-center gap-2 rounded-lg border border-surface-border hover:bg-surface hover:border-primary transition-all text-on-surface group">
                             <span class="material-symbols-outlined text-[18px] group-hover:text-primary transition-colors">add</span>
@@ -337,9 +337,9 @@
                         </button>
                     </div>
                 </div>
-
+    
                 <div class="h-[1px] w-full bg-gradient-to-r from-transparent via-surface-border to-transparent my-1"></div>
-
+    
                 <div class="flex flex-col gap-2">
                     <div class="flex justify-between items-end">
                         <label class="text-xs font-bold text-on-surface-variant">USUARIO</label>
@@ -350,15 +350,15 @@
                     </div>
                 </div>
             `;
-
+    
             container.appendChild(card);
-
+    
             initCustomDropdown(card.querySelector(".input-coordinador"));
             initCustomDropdown(card.querySelector(".input-placa"));
-
+    
             updateCardOptions(card);
         }
-
+    
         function createCustomDropdownHtml(inputClass, placeholder, iconName, isPlaca = false) {
             return `
                 <div class="custom-dropdown-container">
@@ -377,36 +377,39 @@
                 </div>
             `;
         }
-
+    
         function initCustomDropdown(inputElement) {
             const container = inputElement.closest(".custom-dropdown-container");
             const menu = container.querySelector(".custom-dropdown-menu");
-
+    
             if (!container._optionsList) {
                 container._optionsList = [];
             }
-
+    
             const renderOptions = (filterText = "") => {
                 const options = container._optionsList || [];
                 const searchNorm = normalizeText(filterText);
                 const filtered = options.filter(opt => normalizeText(opt).includes(searchNorm));
-
+    
                 if (filtered.length === 0) {
                     menu.innerHTML = `<div class="dropdown-no-results">SIN COINCIDENCIAS (CONSERVARÁ TEXTO LIBRE)</div>`;
                 } else {
                     menu.innerHTML = filtered.map(opt => `<div class="dropdown-item" data-value="${opt}">${opt}</div>`).join("");
                 }
             };
-
+    
             const openMenu = () => {
+                const card = container.closest(".cuadrilla-card");
+                if (card) updateCardOptions(card);
+    
                 closeAllDropdowns();
                 container.classList.add("open");
                 renderOptions(inputElement.value);
             };
-
+    
             inputElement.addEventListener("focus", openMenu);
             inputElement.addEventListener("click", openMenu);
-
+    
             inputElement.addEventListener("input", () => {
                 inputElement.value = inputElement.value.toUpperCase();
                 if (!container.classList.contains("open")) {
@@ -414,7 +417,7 @@
                 }
                 renderOptions(inputElement.value);
             });
-
+    
             menu.addEventListener("pointerdown", (e) => {
                 const item = e.target.closest(".dropdown-item");
                 if (item) {
@@ -423,64 +426,64 @@
                 }
             });
         }
-
+    
         function removeCuadrilla(btn) {
             btn.closest(".cuadrilla-card").remove();
         }
-
+    
         function handleSedeChange(selectElement) {
             const card = selectElement.closest(".cuadrilla-card");
             updateCardOptions(card);
         }
-
+    
         function updateCardOptions(card) {
             const sedeActualNorm = normalizeText(card.querySelector(".input-sede").value);
-
+    
             const filteredPersonal = globalData.personal.filter(p => {
                 return !sedeActualNorm || normalizeText(p.sede) === sedeActualNorm;
             });
-
+    
             const coordinadores = filteredPersonal
                 .filter(p => matchesCargo(p.cargo, "COORDINADOR"))
                 .map(p => p.nombre);
-
+    
             const coordContainer = card.querySelector(".input-coordinador").closest(".custom-dropdown-container");
             coordContainer._optionsList = Array.from(new Set(coordinadores));
-
+    
             const placaContainer = card.querySelector(".input-placa").closest(".custom-dropdown-container");
             placaContainer._optionsList = Array.from(new Set(globalData.placas));
-
+    
             card.querySelectorAll(".tecnico-row").forEach(row => {
                 const tipo = row.dataset.tipo;
                 const techInput = row.querySelector(".input-nombre-tecnico");
                 const techContainer = techInput.closest(".custom-dropdown-container");
-
+    
                 const listTech = filteredPersonal
                     .filter(p => matchesCargo(p.cargo, tipo))
                     .map(p => p.nombre);
-
+    
                 techContainer._optionsList = Array.from(new Set(listTech));
             });
         }
-
+    
         function addTecnico(btn, tipo) {
             const card = btn.closest(".cuadrilla-card");
             const tecnicosList = card.querySelector(".tecnicos-list");
             const sedeActualNorm = normalizeText(card.querySelector(".input-sede").value);
-
+    
             const filteredPersonal = globalData.personal.filter(p => {
                 const matchSede = !sedeActualNorm || normalizeText(p.sede) === sedeActualNorm;
                 return matchSede && matchesCargo(p.cargo, tipo);
             });
-
+    
             const opcionesTecnico = Array.from(new Set(filteredPersonal.map(p => p.nombre)));
-
+    
             const row = document.createElement("div");
             row.className = "tecnico-row group relative flex items-center bg-surface hover:bg-surface-container-low transition-colors rounded-lg p-2 pr-4 h-[56px] w-full";
             row.dataset.tipo = tipo;
-
+    
             const bgBadge = tipo === 'T1' ? 'bg-technician-t1' : 'bg-technician-t2';
-
+    
             row.innerHTML = `
                 <div class="w-12 flex items-center justify-center shrink-0">
                     <span class="w-8 h-8 rounded-full ${bgBadge} flex items-center justify-center font-bold text-xs text-on-surface">${tipo}</span>
@@ -492,23 +495,23 @@
                     <span class="material-symbols-outlined text-[20px]">close</span>
                 </button>
             `;
-
+    
             tecnicosList.appendChild(row);
-
+    
             const techInput = row.querySelector(".input-nombre-tecnico");
             const techContainer = techInput.closest(".custom-dropdown-container");
             techContainer._optionsList = opcionesTecnico;
-
+    
             initCustomDropdown(techInput);
             updateBadgeAsignados(card);
         }
-
+    
         function removeTecnicoRow(btn) {
             const card = btn.closest(".cuadrilla-card");
             btn.closest(".tecnico-row").remove();
             updateBadgeAsignados(card);
         }
-
+    
         function updateBadgeAsignados(card) {
             const total = card.querySelectorAll(".tecnico-row").length;
             const badge = card.querySelector(".badge-asignados");
@@ -516,127 +519,155 @@
                 badge.innerText = `${total} ASIGNADOS`;
             }
         }
-
-        // Función para compilar a PDF y abrir diálogo para WhatsApp/Compartir
+    
+        // Generación de PDF Corregida
         async function generateAndSharePDF(payload) {
             showLoading("Generando PDF para compartir...");
-
+        
+            // 1. Crear contenedor en el viewport pero detrás del overlay para garantizar renderizado
             const printElement = document.createElement("div");
-            printElement.style.padding = "20px";
+            printElement.id = "pdf-temp-container";
+            printElement.style.position = "fixed";
+            printElement.style.top = "0";
+            printElement.style.left = "0";
+            printElement.style.width = "750px";
+            printElement.style.padding = "30px";
             printElement.style.fontFamily = "Arial, sans-serif";
             printElement.style.color = "#191c1e";
-
+            printElement.style.backgroundColor = "#ffffff";
+            printElement.style.zIndex = "-9999"; 
+            printElement.style.boxSizing = "border-box";
+        
             let contenidoHtml = `
                 <div style="text-align: center; border-bottom: 2px solid #003f87; padding-bottom: 10px; margin-bottom: 20px;">
-                    <h1 style="color: #003f87; margin: 0; font-size: 20px;">RESUMEN DE REGISTRO DE CUADRILLAS</h1>
+                    <h1 style="color: #003f87; margin: 0; font-size: 22px;">RESUMEN DE REGISTRO DE CUADRILLAS</h1>
                     <p style="margin: 5px 0 0 0; font-size: 12px; color: #565e74;">FECHA DE EMISIÓN: ${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES')}</p>
                 </div>
             `;
-
+        
+            // Bucle para iterar las N cuadrillas procesadas dinámicamente
             payload.forEach((c, idx) => {
                 contenidoHtml += `
-                    <div style="border: 1px solid #E2E8F0; border-radius: 8px; padding: 15px; margin-bottom: 15px; page-break-inside: avoid;">
-                        <h3 style="color: #003f87; margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 5px;">CUADRILLA #${idx + 1}</h3>
-                        <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
-                            <tr><td style="padding: 4px; font-weight: bold; width: 30%;">SEDE:</td><td style="padding: 4px;">${c.sede}</td></tr>
-                            <tr><td style="padding: 4px; font-weight: bold;">COORDINADOR:</td><td style="padding: 4px;">${c.coordinador}</td></tr>
-                            <tr><td style="padding: 4px; font-weight: bold;">FECHA TRABAJO:</td><td style="padding: 4px;">${c.fechaHora}</td></tr>
-                            <tr><td style="padding: 4px; font-weight: bold;">PLACA VEHÍCULO:</td><td style="padding: 4px;">${c.placa}</td></tr>
+                    <div style="border: 1px solid #E2E8F0; border-radius: 8px; padding: 15px; margin-bottom: 20px; background: #ffffff; page-break-inside: avoid;">
+                        <h3 style="color: #003f87; margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 5px; font-size: 14px;">CUADRILLA #${idx + 1}</h3>
+                        <table style="width: 100%; font-size: 12px; border-collapse: collapse; margin-bottom: 10px;">
+                            <tr><td style="padding: 4px; font-weight: bold; width: 30%;">SEDE:</td><td style="padding: 4px;">${c.sede || 'N/A'}</td></tr>
+                            <tr><td style="padding: 4px; font-weight: bold;">COORDINADOR:</td><td style="padding: 4px;">${c.coordinador || 'N/A'}</td></tr>
+                            <tr><td style="padding: 4px; font-weight: bold;">FECHA TRABAJO:</td><td style="padding: 4px;">${c.fechaHora || 'N/A'}</td></tr>
+                            <tr><td style="padding: 4px; font-weight: bold;">PLACA VEHÍCULO:</td><td style="padding: 4px;">${c.placa || 'N/A'}</td></tr>
                             <tr><td style="padding: 4px; font-weight: bold;">USUARIO:</td><td style="padding: 4px;">${c.usuario || 'N/A'}</td></tr>
                         </table>
-                        <h4 style="margin: 10px 0 5px 0; font-size: 12px; color: #565e74;">TÉCNICOS ASIGNADOS:</h4>
+                        <h4 style="margin: 10px 0 5px 0; font-size: 12px; color: #565e74; border-top: 1px dashed #E2E8F0; padding-top: 5px;">TÉCNICOS ASIGNADOS (${c.integrantes.length}):</h4>
                         <ul style="margin: 0; padding-left: 20px; font-size: 12px;">
-                            ${c.integrantes.map(t => `<li><strong>[${t.cargo}]</strong> ${t.nombre}</li>`).join('')}
+                            ${c.integrantes.length > 0 
+                                ? c.integrantes.map(t => `<li style="margin-bottom: 3px;"><strong>[${t.cargo}]</strong> ${t.nombre}</li>`).join('')
+                                : '<li style="color: #888;">Sin técnicos asignados</li>'
+                            }
                         </ul>
                     </div>
                 `;
             });
-
+        
             printElement.innerHTML = contenidoHtml;
-
-            const fileName = `Registro_Cuadrillas_${new Date().toISOString().split('T')[0]}.pdf`;
+            document.body.appendChild(printElement);
+        
+            // Extraer sedes para el nombre del archivo
+            const sedesUnicas = Array.from(new Set(payload.map(p => p.sede).filter(Boolean)));
+            const sedeNombre = sedesUnicas.length === 1 ? sedesUnicas[0].replace(/\s+/g, '_') : (sedesUnicas.length > 1 ? 'MULTISEDE' : 'GENERAL');
+            const fileName = `Registro_Cuadrillas_${sedeNombre}_${new Date().toISOString().split('T')[0]}.pdf`;
+        
+            // Espera mínima para estabilización del layout en el DOM
+            await new Promise(resolve => setTimeout(resolve, 300));
+    
             const opt = {
-                margin: 10,
+                margin: [10, 10, 10, 10],
                 filename: fileName,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2 },
+                html2canvas: { scale: 2, logging: false, useCORS: true },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
-
+        
             try {
-                const pdfWorker = html2pdf().set(opt).from(printElement);
-                const pdfBlob = await pdfWorker.output('blob');
+                const worker = html2pdf().set(opt).from(printElement);
+                const pdfBlob = await worker.output('blob');
+                
+                if (document.getElementById("pdf-temp-container")) {
+                    document.body.removeChild(printElement);
+                }
+    
                 const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
-
                 hideLoading();
-
-                // Intentar compartir vía API nativa del navegador (Android / iOS)
+        
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     await navigator.share({
                         title: 'Registro de Cuadrillas',
-                        text: 'Adjunto el PDF con el resumen de las cuadrillas registradas.',
+                        text: `Adjunto el PDF del resumen de cuadrillas - ${sedeNombre}.`,
                         files: [file]
                     });
                 } else {
-                    // Si es PC o navegador sin soporte nativo de compartir archivo
-                    html2pdf().set(opt).from(printElement).save();
-                    alert("El PDF se guardó correctamente en Google Sheets y se ha descargado a tu equipo.");
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(pdfBlob);
+                    link.download = fileName;
+                    link.click();
+                    alert("El PDF se generó y descargó exitosamente.");
                 }
             } catch (err) {
                 console.error("Error al generar PDF:", err);
+                if (document.getElementById("pdf-temp-container")) {
+                    document.body.removeChild(printElement);
+                }
                 hideLoading();
+                alert("Ocurrió un problema al construir el documento PDF.");
             }
         }
-
+    
         async function handleSubmit(e) {
             e.preventDefault();
             const btnSubmit = document.getElementById("btnSubmit");
             btnSubmit.disabled = true;
             showLoading("Guardando registros en Google Sheets...");
-
+    
             try {
                 const tarjetas = document.querySelectorAll(".cuadrilla-card");
                 let payload = [];
-
+    
                 tarjetas.forEach(card => {
                     const sede = card.querySelector(".input-sede").value;
                     const coordinador = card.querySelector(".input-coordinador").value;
                     const fechaHora = card.querySelector(".input-fecha").value;
                     const placa = card.querySelector(".input-placa").value;
                     const usuario = card.querySelector(".input-usuario").value;
-
+    
                     let integrantes = [];
                     card.querySelectorAll(".tecnico-row").forEach(tRow => {
                         const nombreTec = tRow.querySelector(".input-nombre-tecnico").value;
                         const cargoTec = tRow.dataset.tipo;
-
+    
                         if (nombreTec) {
                             integrantes.push({ nombre: nombreTec, cargo: cargoTec });
                         }
                     });
-
+    
                     payload.push({ sede, coordinador, fechaHora, placa, usuario, integrantes });
                 });
-
-                // 1. Guardar primero en Google Sheets
+    
                 const response = await fetch(WEB_APP_URL, {
                     method: "POST",
                     body: JSON.stringify(payload)
                 });
-
+    
                 const result = await response.json();
-
+    
                 if (result.status === "success") {
-                    // 2. Generar PDF y abrir opción de compartir (WhatsApp, etc.)
                     await generateAndSharePDF(payload);
-
+    
                     setTimeout(() => {
                         location.reload();
                     }, 1000);
                 } else {
                     throw new Error(result.message || "Error desconocido en el servidor");
                 }
-
+    
             } catch (err) {
                 alert("Error al enviar: " + err.message);
                 btnSubmit.disabled = false;
@@ -644,12 +675,12 @@
                 hideLoading();
             }
         }
-
+    
         function showLoading(text) {
             document.getElementById("loadingText").innerText = text;
             document.getElementById("loadingOverlay").style.display = "flex";
         }
-
+    
         function hideLoading() {
             document.getElementById("loadingOverlay").style.display = "none";
         }
