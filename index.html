@@ -184,7 +184,7 @@
 
     <script>
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzrXmej_xMQ_7kAcxjcQuu0vO0e83CBsMCaFbk-ISa79gM88FJAuy2h3DkdHz7OUWw5gg/exec";
-    
+
         let globalData = { sedes: [], placas: [], personal: [] };
     
         function normalizeText(text) {
@@ -520,104 +520,113 @@
             }
         }
     
-        // Generación de PDF Corregida
+        // FUNCIÓN DE GENERACIÓN DE PDF CORREGIDA
         async function generateAndSharePDF(payload) {
             showLoading("Generando PDF para compartir...");
-        
-            // 1. Crear contenedor en el viewport pero detrás del overlay para garantizar renderizado
+    
+            // Configuración de nombre de archivo con SEDE
+            const sedesUnicas = Array.from(new Set(payload.map(p => p.sede).filter(Boolean)));
+            let sedeNombre = "GENERAL";
+            if (sedesUnicas.length === 1) {
+                sedeNombre = sedesUnicas[0].replace(/[^a-zA-Z0-9]/g, "_").toUpperCase();
+            } else if (sedesUnicas.length > 1) {
+                sedeNombre = "MULTISEDE";
+            }
+    
+            const dateStr = new Date().toISOString().split('T')[0];
+            const fileName = `Registro_Cuadrillas_${sedeNombre}_${dateStr}.pdf`;
+    
+            // Crear contenedor para PDF de forma VISIBLE dentro del DOM durante el render
             const printElement = document.createElement("div");
             printElement.id = "pdf-temp-container";
-            printElement.style.position = "fixed";
+            printElement.style.width = "700px";
+            printElement.style.padding = "20px";
+            printElement.style.background = "#ffffff";
+            printElement.style.color = "#000000";
+            printElement.style.position = "absolute";
             printElement.style.top = "0";
             printElement.style.left = "0";
-            printElement.style.width = "750px";
-            printElement.style.padding = "30px";
-            printElement.style.fontFamily = "Arial, sans-serif";
-            printElement.style.color = "#191c1e";
-            printElement.style.backgroundColor = "#ffffff";
-            printElement.style.zIndex = "-9999"; 
-            printElement.style.boxSizing = "border-box";
-        
+            printElement.style.zIndex = "100"; // Se coloca detrás del loader visible
+    
             let contenidoHtml = `
                 <div style="text-align: center; border-bottom: 2px solid #003f87; padding-bottom: 10px; margin-bottom: 20px;">
-                    <h1 style="color: #003f87; margin: 0; font-size: 22px;">RESUMEN DE REGISTRO DE CUADRILLAS</h1>
-                    <p style="margin: 5px 0 0 0; font-size: 12px; color: #565e74;">FECHA DE EMISIÓN: ${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES')}</p>
+                    <h1 style="color: #003f87; margin: 0; font-size: 20px; font-weight: bold;">RESUMEN DE REGISTRO DE CUADRILLAS</h1>
+                    <p style="margin: 5px 0 0 0; font-size: 12px; color: #555555;">SEDE: ${sedeNombre} | FECHA: ${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES')}</p>
                 </div>
             `;
-        
-            // Bucle para iterar las N cuadrillas procesadas dinámicamente
+    
+            // Renderizado dinámico para N cuadrillas
             payload.forEach((c, idx) => {
                 contenidoHtml += `
-                    <div style="border: 1px solid #E2E8F0; border-radius: 8px; padding: 15px; margin-bottom: 20px; background: #ffffff; page-break-inside: avoid;">
-                        <h3 style="color: #003f87; margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 5px; font-size: 14px;">CUADRILLA #${idx + 1}</h3>
-                        <table style="width: 100%; font-size: 12px; border-collapse: collapse; margin-bottom: 10px;">
-                            <tr><td style="padding: 4px; font-weight: bold; width: 30%;">SEDE:</td><td style="padding: 4px;">${c.sede || 'N/A'}</td></tr>
-                            <tr><td style="padding: 4px; font-weight: bold;">COORDINADOR:</td><td style="padding: 4px;">${c.coordinador || 'N/A'}</td></tr>
-                            <tr><td style="padding: 4px; font-weight: bold;">FECHA TRABAJO:</td><td style="padding: 4px;">${c.fechaHora || 'N/A'}</td></tr>
-                            <tr><td style="padding: 4px; font-weight: bold;">PLACA VEHÍCULO:</td><td style="padding: 4px;">${c.placa || 'N/A'}</td></tr>
-                            <tr><td style="padding: 4px; font-weight: bold;">USUARIO:</td><td style="padding: 4px;">${c.usuario || 'N/A'}</td></tr>
+                    <div style="border: 1px solid #CCCCCC; border-radius: 6px; padding: 12px; margin-bottom: 15px; background: #FFFFFF; page-break-inside: avoid;">
+                        <h3 style="color: #003f87; margin-top: 0; margin-bottom: 8px; border-bottom: 1px solid #EEEEEE; padding-bottom: 4px; font-size: 14px;">CUADRILLA #${idx + 1}</h3>
+                        <table style="width: 100%; font-size: 11px; border-collapse: collapse; margin-bottom: 8px;">
+                            <tr><td style="padding: 3px; font-weight: bold; width: 30%;">SEDE DE OPERACIÓN:</td><td style="padding: 3px;">${c.sede || 'N/A'}</td></tr>
+                            <tr><td style="padding: 3px; font-weight: bold;">COORDINADOR:</td><td style="padding: 3px;">${c.coordinador || 'N/A'}</td></tr>
+                            <tr><td style="padding: 3px; font-weight: bold;">FECHA EN CAMPO:</td><td style="padding: 3px;">${c.fechaHora || 'N/A'}</td></tr>
+                            <tr><td style="padding: 3px; font-weight: bold;">PLACA VEHÍCULO:</td><td style="padding: 3px;">${c.placa || 'N/A'}</td></tr>
+                            <tr><td style="padding: 3px; font-weight: bold;">USUARIO REGISTRO:</td><td style="padding: 3px;">${c.usuario || 'N/A'}</td></tr>
                         </table>
-                        <h4 style="margin: 10px 0 5px 0; font-size: 12px; color: #565e74; border-top: 1px dashed #E2E8F0; padding-top: 5px;">TÉCNICOS ASIGNADOS (${c.integrantes.length}):</h4>
-                        <ul style="margin: 0; padding-left: 20px; font-size: 12px;">
+                        <div style="font-size: 11px; font-weight: bold; color: #333333; margin-top: 6px; border-top: 1px dashed #DDD; padding-top: 4px;">TÉCNICOS ASIGNADOS (${c.integrantes.length}):</div>
+                        <ul style="margin: 4px 0 0 0; padding-left: 18px; font-size: 11px;">
                             ${c.integrantes.length > 0 
-                                ? c.integrantes.map(t => `<li style="margin-bottom: 3px;"><strong>[${t.cargo}]</strong> ${t.nombre}</li>`).join('')
-                                : '<li style="color: #888;">Sin técnicos asignados</li>'
+                                ? c.integrantes.map(t => `<li style="margin-bottom: 2px;"><strong>[${t.cargo}]</strong> ${t.nombre}</li>`).join('')
+                                : '<li style="color: #777777;">Sin técnicos registrados</li>'
                             }
                         </ul>
                     </div>
                 `;
             });
-        
+    
             printElement.innerHTML = contenidoHtml;
             document.body.appendChild(printElement);
-        
-            // Extraer sedes para el nombre del archivo
-            const sedesUnicas = Array.from(new Set(payload.map(p => p.sede).filter(Boolean)));
-            const sedeNombre = sedesUnicas.length === 1 ? sedesUnicas[0].replace(/\s+/g, '_') : (sedesUnicas.length > 1 ? 'MULTISEDE' : 'GENERAL');
-            const fileName = `Registro_Cuadrillas_${sedeNombre}_${new Date().toISOString().split('T')[0]}.pdf`;
-        
-            // Espera mínima para estabilización del layout en el DOM
-            await new Promise(resolve => setTimeout(resolve, 300));
     
+            // Opciones de html2pdf
             const opt = {
-                margin: [10, 10, 10, 10],
-                filename: fileName,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, logging: false, useCORS: true },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                margin:       [10, 10, 10, 10],
+                filename:     fileName,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, logging: false, scrollY: 0 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
-        
+    
             try {
-                const worker = html2pdf().set(opt).from(printElement);
-                const pdfBlob = await worker.output('blob');
+                // Generación sincrónica limpia con html2pdf
+                const pdfBlob = await html2pdf().set(opt).from(printElement).output('blob');
                 
+                // Limpieza del DOM
                 if (document.getElementById("pdf-temp-container")) {
                     document.body.removeChild(printElement);
                 }
     
-                const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+                const file = new File([pdfBlob], fileName, { type: 'application/pdf', lastModified: Date.now() });
                 hideLoading();
-        
+    
+                // Intento de compartir usando Web Share API con fallback directo
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     await navigator.share({
-                        title: 'Registro de Cuadrillas',
-                        text: `Adjunto el PDF del resumen de cuadrillas - ${sedeNombre}.`,
+                        title: `Registro Cuadrillas - ${sedeNombre}`,
+                        text: `Resumen de cuadrillas registradas (${sedeNombre}).`,
                         files: [file]
                     });
                 } else {
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(pdfBlob);
-                    link.download = fileName;
-                    link.click();
-                    alert("El PDF se generó y descargó exitosamente.");
+                    const downloadUrl = URL.createObjectURL(pdfBlob);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(downloadUrl);
+                    alert("PDF generado e impreso correctamente.");
                 }
             } catch (err) {
-                console.error("Error al generar PDF:", err);
+                console.error("Error crítico al generar PDF:", err);
                 if (document.getElementById("pdf-temp-container")) {
                     document.body.removeChild(printElement);
                 }
                 hideLoading();
-                alert("Ocurrió un problema al construir el documento PDF.");
+                alert("No se pudo compilar el documento PDF: " + err.message);
             }
         }
     
