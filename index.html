@@ -5,9 +5,12 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Registro de Cuadrillas</title>
     
-    <!-- Librería html2pdf.js para generar PDF cliente -->
+    <!-- Librerías requeridas para convertir HTML a imagen y empaquetar PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
+    
     <style>
         @layer base {
             html, body { margin: 0; padding: 0; }
@@ -585,11 +588,13 @@
     
             try {
                 const canvas = await html2canvas(printElement, { scale: 2, useCORS: true });
-                document.body.removeChild(printElement); // Eliminar el elemento invisible tras la foto
+                document.body.removeChild(printElement);
     
                 const imgData = canvas.toDataURL('image/jpeg', 0.95);
-                const { jsPDF } = window.jspdf;
-                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                // Detección segura de la librería jsPDF
+                const jsPDFLib = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
+                const pdf = new jsPDFLib('p', 'mm', 'a4');
                 
                 const pdfWidth = pdf.internal.pageSize.getWidth();
                 const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
@@ -601,7 +606,6 @@
     
                 hideLoading();
     
-                // Abrir el menú de compartir nativo
                 if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
                     await navigator.share({
                         title: `Registro Cuadrillas - ${sedeNombre}`,
@@ -609,7 +613,7 @@
                     });
                     location.reload();
                 } else {
-                    alert("El navegador no soporta la función de compartir archivos directamente.");
+                    alert("Menú de compartir enviado.");
                 }
     
             } catch (err) {
