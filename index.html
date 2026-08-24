@@ -632,63 +632,67 @@
         }
     
         async function handleSubmit(e) {
-            e.preventDefault();
-            const btnSubmit = document.getElementById("btnSubmit");
-            btnSubmit.disabled = true;
-            showLoading("Guardando registros en Google Sheets...");
-        
-            try {
-                const tarjetas = document.querySelectorAll(".cuadrilla-card");
-                let payload = [];
-        
-                tarjetas.forEach(card => {
-                    const sede = card.querySelector(".input-sede").value;
-                    const coordinador = card.querySelector(".input-coordinador").value;
-                    const fechaHora = card.querySelector(".input-fecha").value;
-                    const placa = card.querySelector(".input-placa").value;
-                    const usuario = card.querySelector(".input-usuario").value;
-        
-                    let integrantes = [];
-                    card.querySelectorAll(".tecnico-row").forEach(tRow => {
-                        const nombreTec = tRow.querySelector(".input-nombre-tecnico").value;
-                        const cargoTec = tRow.dataset.tipo;
-        
-                        if (nombreTec) {
-                            integrantes.push({ nombre: nombreTec, cargo: cargoTec });
-                        }
-                    });
-        
-                    payload.push({ sede, coordinador, fechaHora, placa, usuario, integrantes });
-                });
-        
-                // Petición POST adaptable para la redirección de Apps Script
-                const response = await fetch(WEB_APP_URL, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "text/plain;charset=utf-8"
-                    },
-                    body: JSON.stringify(payload)
-                });
-        
-                if (!response.ok) {
-                    throw new Error(`Error en el servidor: ${response.status}`);
+            async function handleSubmit(e) {
+    e.preventDefault();
+    const btnSubmit = document.getElementById("btnSubmit");
+    btnSubmit.disabled = true;
+    showLoading("Guardando registros...");
+
+    try {
+        const tarjetas = document.querySelectorAll(".cuadrilla-card");
+        let payload = [];
+
+        tarjetas.forEach(card => {
+            const sede = card.querySelector(".input-sede").value;
+            const coordinador = card.querySelector(".input-coordinador").value;
+            const fechaHora = card.querySelector(".input-fecha").value;
+            const placa = card.querySelector(".input-placa").value;
+            const usuario = card.querySelector(".input-usuario").value;
+
+            let integrantes = [];
+            card.querySelectorAll(".tecnico-row").forEach(tRow => {
+                const nombreTec = tRow.querySelector(".input-nombre-tecnico").value;
+                const cargoTec = tRow.dataset.tipo;
+
+                if (nombreTec) {
+                    integrantes.push({ nombre: nombreTec, cargo: cargoTec });
                 }
-        
-                const result = await response.json();
-        
-                if (result.status === "success") {
-                    await generateAndSharePDF(payload);
-                } else {
-                    throw new Error(result.message || "Ocurrió un error al guardar en la hoja.");
-                }
-        
-            } catch (err) {
-                alert("Error al enviar los datos: " + err.message);
-            } finally {
-                btnSubmit.disabled = false;
-                hideLoading();
-            }
+            });
+
+            payload.push({ sede, coordinador, fechaHora, placa, usuario, integrantes });
+        });
+
+        // 1. Usar FormData en lugar de JSON crudo para evitar bloqueos de CORS / Redirección 404
+        const formData = new FormData();
+        formData.append("data", JSON.stringify(payload));
+
+        // 2. Realizar la petición con seguimiento de redirección activado
+        const response = await fetch(WEB_APP_URL, {
+            method: "POST",
+            method: "POST",
+            body: formData,
+            redirect: "follow"
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error HTTP del servidor: ${response.status}`);
         }
+
+        const result = await response.json();
+
+        if (result.status === "success") {
+            await generateAndSharePDF(payload);
+        } else {
+            throw new Error(result.message || "Error al procesar en Google Sheets.");
+        }
+
+    } catch (err) {
+        alert("Error al enviar los datos: " + err.message);
+    } finally {
+        btnSubmit.disabled = false;
+        hideLoading();
+    }
+}
     
         function showLoading(text) {
             document.getElementById("loadingText").innerText = text;
