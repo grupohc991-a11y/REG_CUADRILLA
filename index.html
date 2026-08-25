@@ -523,10 +523,8 @@
             }
         }
     
-        // FUNCIÓN DE GENERACIÓN DE PDF CORREGIDA
-        async function generateAndSharePDF(payload) {
-            showLoading("Preparando PDF...");
-            
+        // Generador genérico de PDF según la acción seleccionada
+        async function procesarPDFOpcion(payload, accion) {
             const sedesUnicas = Array.from(new Set(payload.map(p => p.sede).filter(Boolean)));
             let sedeNombre = sedesUnicas.length === 1 ? sedesUnicas[0].replace(/[^a-zA-Z0-9]/g, "_").toUpperCase() : "GENERAL";
             const dateStr = new Date().toISOString().split('T')[0];
@@ -584,117 +582,143 @@
                 
                 pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
                 const pdfBlob = pdf.output('blob');
-                const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
         
-                if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({
-                        title: `Registro Cuadrillas - ${sedeNombre}`,
-                        files: [file]
-                    });
-                    location.reload();
-                } else {
+                if (accion === "VER") {
+                    // Abre el documento en una pestaña nueva
                     const fileURL = URL.createObjectURL(pdfBlob);
                     window.open(fileURL, '_blank');
-                    location.reload();
+                } else if (accion === "COMPARTIR") {
+                    const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+                    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            title: `Registro Cuadrillas - ${sedeNombre}`,
+                            files: [file]
+                        });
+                    } else {
+                        // Fallback si la API de compartir no está disponible en el navegador
+                        const fileURL = URL.createObjectURL(pdfBlob);
+                        window.open(fileURL, '_blank');
+                    }
                 }
         
             } catch (err) {
                 if (document.body.contains(printElement)) document.body.removeChild(printElement);
-                alert("Error al procesar el PDF: " + err.message);
+                alert("Error al procesar el documento: " + err.message);
             }
         }
     
         async function handleSubmit(e) {
             e.preventDefault();
-                const btnSubmit = document.getElementById("btnSubmit");
-                btnSubmit.disabled = true;
-                showLoading("Guardando en Google Sheets...");
-            
-                try {
-                    const tarjetas = document.querySelectorAll(".cuadrilla-card");
-                    let payload = [];
-            
-                    tarjetas.forEach(card => {
-                        const sede = card.querySelector(".input-sede").value;
-                        const coordinador = card.querySelector(".input-coordinador").value;
-                        const fechaHora = card.querySelector(".input-fecha").value;
-                        const placa = card.querySelector(".input-placa").value;
-                        const usuario = card.querySelector(".input-usuario").value;
-            
-                        let integrantes = [];
-                        card.querySelectorAll(".tecnico-row").forEach(tRow => {
-                            const nombreTec = tRow.querySelector(".input-nombre-tecnico").value;
-                            const cargoTec = tRow.dataset.tipo;
-            
-                            if (nombreTec) {
-                                integrantes.push({ nombre: nombreTec, cargo: cargoTec });
-                            }
-                        });
-            
-                        payload.push({ sede, coordinador, fechaHora, placa, usuario, integrantes });
+            const btnSubmit = document.getElementById("btnSubmit");
+            btnSubmit.disabled = true;
+            showLoading("Guardando en Google Sheets...");
+        
+            try {
+                const tarjetas = document.querySelectorAll(".cuadrilla-card");
+                let payload = [];
+        
+                tarjetas.forEach(card => {
+                    const sede = card.querySelector(".input-sede").value;
+                    const coordinador = card.querySelector(".input-coordinador").value;
+                    const fechaHora = card.querySelector(".input-fecha").value;
+                    const placa = card.querySelector(".input-placa").value;
+                    const usuario = card.querySelector(".input-usuario").value;
+        
+                    let integrantes = [];
+                    card.querySelectorAll(".tecnico-row").forEach(tRow => {
+                        const nombreTec = tRow.querySelector(".input-nombre-tecnico").value;
+                        const cargoTec = tRow.dataset.tipo;
+        
+                        if (nombreTec) {
+                            integrantes.push({ nombre: nombreTec, cargo: cargoTec });
+                        }
                     });
-            
-                    // Envío compatible con e.postData.contents sin disparar pre-flight (evita error 404 y JSON invalid)
-                    const response = await fetch(WEB_APP_URL, {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "text/plain;charset=utf-8"
-                        },
-                        body: JSON.stringify(payload)
-                    });
-            
-                    const result = await response.json();
-            
-                    if (result.status === "success") {
-                        hideLoading();
-                        mostrarModalPDF(payload);
-                    } else {
-                        throw new Error(result.message || "Error al registrar en Google Sheets.");
-                    }
-            
-            } catch (err) {
+        
+                    payload.push({ sede, coordinador, fechaHora, placa, usuario, integrantes });
+                });
+        
+                // Guardado en Google Sheets sin disparar CORS (text/plain)
+                const response = await fetch(WEB_APP_URL, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "text/plain;charset=utf-8"
+                    },
+                    body: JSON.stringify(payload)
+                });
+        
+                const result = await response.json();
+        
+                if (result.status === "success") {
                     hideLoading();
-                    alert("Error al enviar los datos: " + err.message);
+                    // Despliega el menú interactivo de 3 opciones
+                    mostrarModalOpciones(payload);
+                } else {
+                    throw new Error(result.message || "Error al registrar en Google Sheets.");
+                }
+        
+            } catch (err) {
+                hideLoading();
+                alert("Error al enviar los datos: " + err.message);
             } finally {
-                    btnSubmit.disabled = false;
+                btnSubmit.disabled = false;
             }
         }
 
         // Modal que captura un nuevo gesto de usuario directo (Resuelve 'Must be handling a user gesture')
         function mostrarModalPDF(payload) {
-            const oldModal = document.getElementById("modalCompartirPDF");
+            const oldModal = document.getElementById("modalOpcionesPDF");
             if (oldModal) oldModal.remove();
         
             const modal = document.createElement("div");
-            modal.id = "modalCompartirPDF";
+            modal.id = "modalOpcionesPDF";
             modal.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999999; display: flex; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;";
         
             modal.innerHTML = `
-                <div style="background: #ffffff; border-radius: 8px; padding: 25px; text-align: center; max-width: 380px; width: 100%; font-family: Arial, sans-serif;">
+                <div style="background: #ffffff; border-radius: 8px; padding: 25px; text-align: center; max-width: 380px; width: 100%; font-family: Arial, sans-serif; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
                     <div style="color: #2e7d32; font-size: 42px; margin-bottom: 5px;">✓</div>
-                    <h2 style="margin: 0 0 10px 0; color: #003f87; font-size: 18px;">¡Registrado en Sheets!</h2>
-                    <p style="font-size: 13px; color: #555; margin-bottom: 20px;">Toca el botón para generar el PDF y abrir el menú de compartir.</p>
+                    <h2 style="margin: 0 0 5px 0; color: #003f87; font-size: 18px;">¡Registro Exitoso!</h2>
+                    <p style="font-size: 12px; color: #666; margin-bottom: 20px;">Los datos se guardaron correctamente. Selecciona una opción:</p>
                     
-                    <button id="btnEjecutarShare" style="background: #003f87; color: #ffffff; border: none; padding: 12px; font-size: 14px; font-weight: bold; border-radius: 5px; cursor: pointer; width: 100%; margin-bottom: 10px;">
-                        📄 GENERAR Y COMPARTIR PDF
+                    <!-- Opción 1: Mostrar Registro (PDF) -->
+                    <button id="btnVerRegistro" style="background: #17a2b8; color: #ffffff; border: none; padding: 12px; font-size: 13px; font-weight: bold; border-radius: 5px; cursor: pointer; width: 100%; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        👁️ MOSTRAR REGISTRO
                     </button>
         
-                    <button id="btnFinalizarTodo" style="background: #e0e0e0; color: #333; border: none; padding: 10px; font-size: 12px; border-radius: 5px; cursor: pointer; width: 100%;">
-                        Finalizar sin compartir
+                    <!-- Opción 2: Compartir -->
+                    <button id="btnCompartirRegistro" style="background: #003f87; color: #ffffff; border: none; padding: 12px; font-size: 13px; font-weight: bold; border-radius: 5px; cursor: pointer; width: 100%; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        📲 COMPARTIR
+                    </button>
+        
+                    <!-- Opción 3: Finalizar -->
+                    <button id="btnFinalizarPagina" style="background: #6c757d; color: #ffffff; border: none; padding: 12px; font-size: 13px; font-weight: bold; border-radius: 5px; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        🏠 FINALIZAR
                     </button>
                 </div>
             `;
         
             document.body.appendChild(modal);
         
-            document.getElementById("btnEjecutarShare").addEventListener("click", async () => {
-                const btn = document.getElementById("btnEjecutarShare");
+            // Acciones de los botones
+            document.getElementById("btnVerRegistro").addEventListener("click", async () => {
+                const btn = document.getElementById("btnVerRegistro");
                 btn.disabled = true;
-                btn.innerText = "Procesando documento...";
-                await generateAndSharePDF(payload);
+                btn.innerText = "Cargando vista...";
+                await procesarPDFOpcion(payload, "VER");
+                btn.disabled = false;
+                btn.innerHTML = "👁️ MOSTRAR REGISTRO";
             });
         
-            document.getElementById("btnFinalizarTodo").addEventListener("click", () => {
+            document.getElementById("btnCompartirRegistro").addEventListener("click", async () => {
+                const btn = document.getElementById("btnCompartirRegistro");
+                btn.disabled = true;
+                btn.innerText = "Procesando...";
+                await procesarPDFOpcion(payload, "COMPARTIR");
+                btn.disabled = false;
+                btn.innerHTML = "📲 COMPARTIR";
+            });
+        
+            document.getElementById("btnFinalizarPagina").addEventListener("click", () => {
+                // Recarga la página para regresar al estado principal
                 location.reload();
             });
         }
