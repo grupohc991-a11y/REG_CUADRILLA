@@ -526,28 +526,15 @@
         // FUNCIÓN DE GENERACIÓN DE PDF CORREGIDA
         async function generateAndSharePDF(payload) {
             showLoading("Preparando PDF...");
-    
+            
             const sedesUnicas = Array.from(new Set(payload.map(p => p.sede).filter(Boolean)));
-            let sedeNombre = "GENERAL";
-            if (sedesUnicas.length === 1) {
-                sedeNombre = sedesUnicas[0].replace(/[^a-zA-Z0-9]/g, "_").toUpperCase();
-            } else if (sedesUnicas.length > 1) {
-                sedeNombre = "MULTISEDE";
-            }
-    
+            let sedeNombre = sedesUnicas.length === 1 ? sedesUnicas[0].replace(/[^a-zA-Z0-9]/g, "_").toUpperCase() : "GENERAL";
             const dateStr = new Date().toISOString().split('T')[0];
             const fileName = `Registro_Cuadrillas_${sedeNombre}_${dateStr}.pdf`;
-    
+        
             const printElement = document.createElement("div");
-            printElement.style.width = "650px";
-            printElement.style.padding = "20px";
-            printElement.style.background = "#ffffff";
-            printElement.style.color = "#000000";
-            printElement.style.position = "fixed";
-            printElement.style.top = "0";
-            printElement.style.left = "0";
-            printElement.style.zIndex = "999999";
-    
+            printElement.style.cssText = "width: 650px; padding: 20px; background: #ffffff; color: #000000; position: fixed; top: 0; left: 0; z-index: 9999999;";
+        
             let contenidoHtml = `
                 <div style="font-family: Arial, sans-serif; color: #000000;">
                     <div style="text-align: center; border-bottom: 2px solid #003f87; padding-bottom: 10px; margin-bottom: 20px;">
@@ -555,7 +542,7 @@
                         <p style="margin: 5px 0 0 0; font-size: 11px; color: #333333;">SEDE: ${sedeNombre} | FECHA: ${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES')}</p>
                     </div>
             `;
-    
+        
             payload.forEach((c, idx) => {
                 contenidoHtml += `
                     <div style="border: 1px solid #000000; border-radius: 4px; padding: 10px; margin-bottom: 12px; background: #ffffff;">
@@ -577,17 +564,17 @@
                     </div>
                 `;
             });
-    
+        
             contenidoHtml += `</div>`;
             printElement.innerHTML = contenidoHtml;
             document.body.appendChild(printElement);
-    
-            await new Promise(resolve => setTimeout(resolve, 200));
-    
+        
+            await new Promise(r => setTimeout(r, 200));
+        
             try {
                 const canvas = await html2canvas(printElement, { scale: 2, useCORS: true });
                 if (document.body.contains(printElement)) document.body.removeChild(printElement);
-    
+        
                 const imgData = canvas.toDataURL('image/jpeg', 0.95);
                 const jsPDFLib = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
                 const pdf = new jsPDFLib('p', 'mm', 'a4');
@@ -596,102 +583,121 @@
                 const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
                 
                 pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-    
                 const pdfBlob = pdf.output('blob');
                 const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
-    
-                hideLoading();
-    
-                // Intento seguro con try-catch directo en el share
+        
                 if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-                    try {
-                        await navigator.share({
-                            title: `Registro Cuadrillas - ${sedeNombre}`,
-                            files: [file]
-                        });
-                        location.reload();
-                        return;
-                    } catch (shareError) {
-                        console.warn("Permiso de usuario expirado para share nativo:", shareError);
-                    }
-                }
-    
-                // Fallback: Si el navegador bloquea el gesto de usuario, abre el PDF directamente en una pestaña
-                const fileURL = URL.createObjectURL(pdfBlob);
-                window.open(fileURL, '_blank');
-                
-                setTimeout(() => {
+                    await navigator.share({
+                        title: `Registro Cuadrillas - ${sedeNombre}`,
+                        files: [file]
+                    });
                     location.reload();
-                }, 1000);
-    
+                } else {
+                    const fileURL = URL.createObjectURL(pdfBlob);
+                    window.open(fileURL, '_blank');
+                    location.reload();
+                }
+        
             } catch (err) {
                 if (document.body.contains(printElement)) document.body.removeChild(printElement);
-                hideLoading();
                 alert("Error al procesar el PDF: " + err.message);
             }
         }
     
         async function handleSubmit(e) {
-    e.preventDefault();
-    const btnSubmit = document.getElementById("btnSubmit");
-    btnSubmit.disabled = true;
-    showLoading("Guardando registros...");
+            e.preventDefault();
+                const btnSubmit = document.getElementById("btnSubmit");
+                btnSubmit.disabled = true;
+                showLoading("Guardando en Google Sheets...");
+            
+                try {
+                    const tarjetas = document.querySelectorAll(".cuadrilla-card");
+                    let payload = [];
+            
+                    tarjetas.forEach(card => {
+                        const sede = card.querySelector(".input-sede").value;
+                        const coordinador = card.querySelector(".input-coordinador").value;
+                        const fechaHora = card.querySelector(".input-fecha").value;
+                        const placa = card.querySelector(".input-placa").value;
+                        const usuario = card.querySelector(".input-usuario").value;
+            
+                        let integrantes = [];
+                        card.querySelectorAll(".tecnico-row").forEach(tRow => {
+                            const nombreTec = tRow.querySelector(".input-nombre-tecnico").value;
+                            const cargoTec = tRow.dataset.tipo;
+            
+                            if (nombreTec) {
+                                integrantes.push({ nombre: nombreTec, cargo: cargoTec });
+                            }
+                        });
+            
+                        payload.push({ sede, coordinador, fechaHora, placa, usuario, integrantes });
+                    });
+            
+                    // Envío compatible con e.postData.contents sin disparar pre-flight (evita error 404 y JSON invalid)
+                    const response = await fetch(WEB_APP_URL, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "text/plain;charset=utf-8"
+                        },
+                        body: JSON.stringify(payload)
+                    });
+            
+                    const result = await response.json();
+            
+                    if (result.status === "success") {
+                        hideLoading();
+                        mostrarModalPDF(payload);
+                    } else {
+                        throw new Error(result.message || "Error al registrar en Google Sheets.");
+                    }
+            
+            } catch (err) {
+                    hideLoading();
+                    alert("Error al enviar los datos: " + err.message);
+            } finally {
+                    btnSubmit.disabled = false;
+            }
+        }
 
-    try {
-        const tarjetas = document.querySelectorAll(".cuadrilla-card");
-        let payload = [];
-
-        tarjetas.forEach(card => {
-            const sede = card.querySelector(".input-sede").value;
-            const coordinador = card.querySelector(".input-coordinador").value;
-            const fechaHora = card.querySelector(".input-fecha").value;
-            const placa = card.querySelector(".input-placa").value;
-            const usuario = card.querySelector(".input-usuario").value;
-
-            let integrantes = [];
-            card.querySelectorAll(".tecnico-row").forEach(tRow => {
-                const nombreTec = tRow.querySelector(".input-nombre-tecnico").value;
-                const cargoTec = tRow.dataset.tipo;
-
-                if (nombreTec) {
-                    integrantes.push({ nombre: nombreTec, cargo: cargoTec });
-                }
+        // Modal que captura un nuevo gesto de usuario directo (Resuelve 'Must be handling a user gesture')
+        function mostrarModalPDF(payload) {
+            const oldModal = document.getElementById("modalCompartirPDF");
+            if (oldModal) oldModal.remove();
+        
+            const modal = document.createElement("div");
+            modal.id = "modalCompartirPDF";
+            modal.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999999; display: flex; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;";
+        
+            modal.innerHTML = `
+                <div style="background: #ffffff; border-radius: 8px; padding: 25px; text-align: center; max-width: 380px; width: 100%; font-family: Arial, sans-serif;">
+                    <div style="color: #2e7d32; font-size: 42px; margin-bottom: 5px;">✓</div>
+                    <h2 style="margin: 0 0 10px 0; color: #003f87; font-size: 18px;">¡Registrado en Sheets!</h2>
+                    <p style="font-size: 13px; color: #555; margin-bottom: 20px;">Toca el botón para generar el PDF y abrir el menú de compartir.</p>
+                    
+                    <button id="btnEjecutarShare" style="background: #003f87; color: #ffffff; border: none; padding: 12px; font-size: 14px; font-weight: bold; border-radius: 5px; cursor: pointer; width: 100%; margin-bottom: 10px;">
+                        📄 GENERAR Y COMPARTIR PDF
+                    </button>
+        
+                    <button id="btnFinalizarTodo" style="background: #e0e0e0; color: #333; border: none; padding: 10px; font-size: 12px; border-radius: 5px; cursor: pointer; width: 100%;">
+                        Finalizar sin compartir
+                    </button>
+                </div>
+            `;
+        
+            document.body.appendChild(modal);
+        
+            document.getElementById("btnEjecutarShare").addEventListener("click", async () => {
+                const btn = document.getElementById("btnEjecutarShare");
+                btn.disabled = true;
+                btn.innerText = "Procesando documento...";
+                await generateAndSharePDF(payload);
             });
-
-            payload.push({ sede, coordinador, fechaHora, placa, usuario, integrantes });
-        });
-
-        // 1. Usar FormData en lugar de JSON crudo para evitar bloqueos de CORS / Redirección 404
-        const formData = new FormData();
-        formData.append("data", JSON.stringify(payload));
-
-        // 2. Realizar la petición con seguimiento de redirección activado
-        const response = await fetch(WEB_APP_URL, {
-            method: "POST",
-            method: "POST",
-            body: formData,
-            redirect: "follow"
-        });
-
-        if (!response.ok) {
-            throw new Error(`Error HTTP del servidor: ${response.status}`);
+        
+            document.getElementById("btnFinalizarTodo").addEventListener("click", () => {
+                location.reload();
+            });
         }
-
-        const result = await response.json();
-
-        if (result.status === "success") {
-            await generateAndSharePDF(payload);
-        } else {
-            throw new Error(result.message || "Error al procesar en Google Sheets.");
-        }
-
-    } catch (err) {
-        alert("Error al enviar los datos: " + err.message);
-    } finally {
-        btnSubmit.disabled = false;
-        hideLoading();
-    }
-}
     
         function showLoading(text) {
             document.getElementById("loadingText").innerText = text;
