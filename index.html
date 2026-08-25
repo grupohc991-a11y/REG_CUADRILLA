@@ -523,6 +523,199 @@
             }
         }
     
+        async function handleSubmit(e) {
+            e.preventDefault();
+            const btnSubmit = document.getElementById("btnSubmit");
+            btnSubmit.disabled = true;
+            showLoading("Guardando en Google Sheets...");
+        
+            try {
+                const tarjetas = document.querySelectorAll(".cuadrilla-card");
+                let payload = [];
+        
+                tarjetas.forEach(card => {
+                    const sede = card.querySelector(".input-sede").value;
+                    const coordinador = card.querySelector(".input-coordinador").value;
+                    const fechaHora = card.querySelector(".input-fecha").value;
+                    const placa = card.querySelector(".input-placa").value;
+                    const usuario = card.querySelector(".input-usuario").value;
+        
+                    let integrantes = [];
+                    card.querySelectorAll(".tecnico-row").forEach(tRow => {
+                        const nombreTec = tRow.querySelector(".input-nombre-tecnico").value;
+                        const cargoTec = tRow.dataset.tipo;
+        
+                        if (nombreTec) {
+                            integrantes.push({ nombre: nombreTec, cargo: cargoTec });
+                        }
+                    });
+        
+                    payload.push({ sede, coordinador, fechaHora, placa, usuario, integrantes });
+                });
+        
+                // Guardado en Google Sheets sin disparar CORS (text/plain)
+                const response = await fetch(WEB_APP_URL, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "text/plain;charset=utf-8"
+                    },
+                    body: JSON.stringify(payload)
+                });
+        
+                const result = await response.json();
+        
+                if (result.status === "success") {
+                    hideLoading();
+                    // Despliega el menú interactivo de 3 opciones
+                    mostrarModalOpciones(payload);
+                } else {
+                    throw new Error(result.message || "Error al registrar en Google Sheets.");
+                }
+        
+            } catch (err) {
+                hideLoading();
+                alert("Error al enviar los datos: " + err.message);
+            } finally {
+                btnSubmit.disabled = false;
+            }
+        }
+
+// 1. MODAL CON LAS 3 OPCIONES
+function mostrarModalOpciones(payload) {
+    const oldModal = document.getElementById("modalOpcionesPDF");
+    if (oldModal) oldModal.remove();
+
+    const modal = document.createElement("div");
+    modal.id = "modalOpcionesPDF";
+    modal.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999999; display: flex; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;";
+
+    modal.innerHTML = `
+        <div style="background: #ffffff; border-radius: 8px; padding: 25px; text-align: center; max-width: 380px; width: 100%; font-family: Arial, sans-serif; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+            <div style="color: #2e7d32; font-size: 42px; margin-bottom: 5px;">✓</div>
+            <h2 style="margin: 0 0 5px 0; color: #003f87; font-size: 18px;">¡Registro Exitoso!</h2>
+            <p style="font-size: 12px; color: #666; margin-bottom: 20px;">Los datos se guardaron correctamente. Selecciona una opción:</p>
+            
+            <button id="btnVerRegistro" style="background: #17a2b8; color: #ffffff; border: none; padding: 12px; font-size: 13px; font-weight: bold; border-radius: 5px; cursor: pointer; width: 100%; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                👁️ MOSTRAR REGISTRO
+            </button>
+
+            <button id="btnCompartirRegistro" style="background: #003f87; color: #ffffff; border: none; padding: 12px; font-size: 13px; font-weight: bold; border-radius: 5px; cursor: pointer; width: 100%; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                📲 COMPARTIR
+            </button>
+
+            <button id="btnFinalizarPagina" style="background: #6c757d; color: #ffffff; border: none; padding: 12px; font-size: 13px; font-weight: bold; border-radius: 5px; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                🏠 FINALIZAR
+            </button>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    document.getElementById("btnVerRegistro").addEventListener("click", async () => {
+        const btn = document.getElementById("btnVerRegistro");
+        btn.disabled = true;
+        btn.innerText = "Cargando vista...";
+        await procesarPDFOpcion(payload, "VER");
+        btn.disabled = false;
+        btn.innerHTML = "👁️ MOSTRAR REGISTRO";
+    });
+
+    document.getElementById("btnCompartirRegistro").addEventListener("click", async () => {
+        const btn = document.getElementById("btnCompartirRegistro");
+        btn.disabled = true;
+        btn.innerText = "Procesando...";
+        await procesarPDFOpcion(payload, "COMPARTIR");
+        btn.disabled = false;
+        btn.innerHTML = "📲 COMPARTIR";
+    });
+
+    document.getElementById("btnFinalizarPagina").addEventListener("click", () => {
+        location.reload();
+    });
+}
+
+        // 2. GENERADOR DE PDF (SUSTITUYE A generateAndSharePDF)
+        async function procesarPDFOpcion(payload, accion) {
+            const sedesUnicas = Array.from(new Set(payload.map(p => p.sede).filter(Boolean)));
+            let sedeNombre = sedesUnicas.length === 1 ? sedesUnicas[0].replace(/[^a-zA-Z0-9]/g, "_").toUpperCase() : "GENERAL";
+            const dateStr = new Date().toISOString().split('T')[0];
+            const fileName = `Registro_Cuadrillas_${sedeNombre}_${dateStr}.pdf`;
+        
+            const printElement = document.createElement("div");
+            printElement.style.cssText = "width: 650px; padding: 20px; background: #ffffff; color: #000000; position: fixed; top: 0; left: 0; z-index: 9999999;";
+        
+            let contenidoHtml = `
+                <div style="font-family: Arial, sans-serif; color: #000000;">
+                    <div style="text-align: center; border-bottom: 2px solid #003f87; padding-bottom: 10px; margin-bottom: 20px;">
+                        <h1 style="color: #003f87; margin: 0; font-size: 18px; font-weight: bold;">RESUMEN DE REGISTRO DE CUADRILLAS</h1>
+                        <p style="margin: 5px 0 0 0; font-size: 11px; color: #333333;">SEDE: ${sedeNombre} | FECHA: ${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES')}</p>
+                    </div>
+            `;
+        
+            payload.forEach((c, idx) => {
+                contenidoHtml += `
+                    <div style="border: 1px solid #000000; border-radius: 4px; padding: 10px; margin-bottom: 12px; background: #ffffff;">
+                        <h3 style="color: #003f87; margin: 0 0 6px 0; border-bottom: 1px solid #cccccc; padding-bottom: 4px; font-size: 13px;">CUADRILLA #${idx + 1}</h3>
+                        <table style="width: 100%; font-size: 10px; border-collapse: collapse; margin-bottom: 6px;">
+                            <tr><td style="padding: 2px; font-weight: bold; width: 35%;">SEDE DE OPERACIÓN:</td><td style="padding: 2px;">${c.sede || 'N/A'}</td></tr>
+                            <tr><td style="padding: 2px; font-weight: bold;">COORDINADOR:</td><td style="padding: 2px;">${c.coordinador || 'N/A'}</td></tr>
+                            <tr><td style="padding: 2px; font-weight: bold;">FECHA EN CAMPO:</td><td style="padding: 2px;">${c.fechaHora || 'N/A'}</td></tr>
+                            <tr><td style="padding: 2px; font-weight: bold;">PLACA VEHÍCULO:</td><td style="padding: 2px;">${c.placa || 'N/A'}</td></tr>
+                            <tr><td style="padding: 2px; font-weight: bold;">USUARIO REGISTRO:</td><td style="padding: 2px;">${c.usuario || 'N/A'}</td></tr>
+                        </table>
+                        <div style="font-size: 10px; font-weight: bold; margin-top: 4px; border-top: 1px dashed #aaaaaa; padding-top: 4px;">TÉCNICOS ASIGNADOS (${c.integrantes.length}):</div>
+                        <ul style="margin: 2px 0 0 0; padding-left: 15px; font-size: 10px;">
+                            ${c.integrantes.length > 0 
+                                ? c.integrantes.map(t => `<li style="margin-bottom: 2px;"><strong>[${t.cargo}]</strong> ${t.nombre}</li>`).join('')
+                                : '<li>Sin técnicos registrados</li>'
+                            }
+                        </ul>
+                    </div>
+                `;
+            });
+        
+            contenidoHtml += `</div>`;
+            printElement.innerHTML = contenidoHtml;
+            document.body.appendChild(printElement);
+        
+            await new Promise(r => setTimeout(r, 200));
+        
+            try {
+                const canvas = await html2canvas(printElement, { scale: 2, useCORS: true });
+                if (document.body.contains(printElement)) document.body.removeChild(printElement);
+        
+                const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                const jsPDFLib = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
+                const pdf = new jsPDFLib('p', 'mm', 'a4');
+                
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                
+                pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+                const pdfBlob = pdf.output('blob');
+        
+                if (accion === "VER") {
+                    const fileURL = URL.createObjectURL(pdfBlob);
+                    window.open(fileURL, '_blank');
+                } else if (accion === "COMPARTIR") {
+                    const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+                    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            title: `Registro Cuadrillas - ${sedeNombre}`,
+                            files: [file]
+                        });
+                    } else {
+                        const fileURL = URL.createObjectURL(pdfBlob);
+                        window.open(fileURL, '_blank');
+                    }
+                }
+        
+            } catch (err) {
+                if (document.body.contains(printElement)) document.body.removeChild(printElement);
+                alert("Error al procesar el documento: " + err.message);
+            }
+        }
+
         // Generador genérico de PDF según la acción seleccionada
         async function procesarPDFOpcion(payload, accion) {
             const sedesUnicas = Array.from(new Set(payload.map(p => p.sede).filter(Boolean)));
@@ -605,122 +798,6 @@
                 if (document.body.contains(printElement)) document.body.removeChild(printElement);
                 alert("Error al procesar el documento: " + err.message);
             }
-        }
-    
-        async function handleSubmit(e) {
-            e.preventDefault();
-            const btnSubmit = document.getElementById("btnSubmit");
-            btnSubmit.disabled = true;
-            showLoading("Guardando en Google Sheets...");
-        
-            try {
-                const tarjetas = document.querySelectorAll(".cuadrilla-card");
-                let payload = [];
-        
-                tarjetas.forEach(card => {
-                    const sede = card.querySelector(".input-sede").value;
-                    const coordinador = card.querySelector(".input-coordinador").value;
-                    const fechaHora = card.querySelector(".input-fecha").value;
-                    const placa = card.querySelector(".input-placa").value;
-                    const usuario = card.querySelector(".input-usuario").value;
-        
-                    let integrantes = [];
-                    card.querySelectorAll(".tecnico-row").forEach(tRow => {
-                        const nombreTec = tRow.querySelector(".input-nombre-tecnico").value;
-                        const cargoTec = tRow.dataset.tipo;
-        
-                        if (nombreTec) {
-                            integrantes.push({ nombre: nombreTec, cargo: cargoTec });
-                        }
-                    });
-        
-                    payload.push({ sede, coordinador, fechaHora, placa, usuario, integrantes });
-                });
-        
-                // Guardado en Google Sheets sin disparar CORS (text/plain)
-                const response = await fetch(WEB_APP_URL, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "text/plain;charset=utf-8"
-                    },
-                    body: JSON.stringify(payload)
-                });
-        
-                const result = await response.json();
-        
-                if (result.status === "success") {
-                    hideLoading();
-                    // Despliega el menú interactivo de 3 opciones
-                    mostrarModalOpciones(payload);
-                } else {
-                    throw new Error(result.message || "Error al registrar en Google Sheets.");
-                }
-        
-            } catch (err) {
-                hideLoading();
-                alert("Error al enviar los datos: " + err.message);
-            } finally {
-                btnSubmit.disabled = false;
-            }
-        }
-
-        // Modal que captura un nuevo gesto de usuario directo (Resuelve 'Must be handling a user gesture')
-        function mostrarModalPDF(payload) {
-            const oldModal = document.getElementById("modalOpcionesPDF");
-            if (oldModal) oldModal.remove();
-        
-            const modal = document.createElement("div");
-            modal.id = "modalOpcionesPDF";
-            modal.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999999; display: flex; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;";
-        
-            modal.innerHTML = `
-                <div style="background: #ffffff; border-radius: 8px; padding: 25px; text-align: center; max-width: 380px; width: 100%; font-family: Arial, sans-serif; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
-                    <div style="color: #2e7d32; font-size: 42px; margin-bottom: 5px;">✓</div>
-                    <h2 style="margin: 0 0 5px 0; color: #003f87; font-size: 18px;">¡Registro Exitoso!</h2>
-                    <p style="font-size: 12px; color: #666; margin-bottom: 20px;">Los datos se guardaron correctamente. Selecciona una opción:</p>
-                    
-                    <!-- Opción 1: Mostrar Registro (PDF) -->
-                    <button id="btnVerRegistro" style="background: #17a2b8; color: #ffffff; border: none; padding: 12px; font-size: 13px; font-weight: bold; border-radius: 5px; cursor: pointer; width: 100%; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        👁️ MOSTRAR REGISTRO
-                    </button>
-        
-                    <!-- Opción 2: Compartir -->
-                    <button id="btnCompartirRegistro" style="background: #003f87; color: #ffffff; border: none; padding: 12px; font-size: 13px; font-weight: bold; border-radius: 5px; cursor: pointer; width: 100%; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        📲 COMPARTIR
-                    </button>
-        
-                    <!-- Opción 3: Finalizar -->
-                    <button id="btnFinalizarPagina" style="background: #6c757d; color: #ffffff; border: none; padding: 12px; font-size: 13px; font-weight: bold; border-radius: 5px; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        🏠 FINALIZAR
-                    </button>
-                </div>
-            `;
-        
-            document.body.appendChild(modal);
-        
-            // Acciones de los botones
-            document.getElementById("btnVerRegistro").addEventListener("click", async () => {
-                const btn = document.getElementById("btnVerRegistro");
-                btn.disabled = true;
-                btn.innerText = "Cargando vista...";
-                await procesarPDFOpcion(payload, "VER");
-                btn.disabled = false;
-                btn.innerHTML = "👁️ MOSTRAR REGISTRO";
-            });
-        
-            document.getElementById("btnCompartirRegistro").addEventListener("click", async () => {
-                const btn = document.getElementById("btnCompartirRegistro");
-                btn.disabled = true;
-                btn.innerText = "Procesando...";
-                await procesarPDFOpcion(payload, "COMPARTIR");
-                btn.disabled = false;
-                btn.innerHTML = "📲 COMPARTIR";
-            });
-        
-            document.getElementById("btnFinalizarPagina").addEventListener("click", () => {
-                // Recarga la página para regresar al estado principal
-                location.reload();
-            });
         }
     
         function showLoading(text) {
