@@ -61,6 +61,16 @@
             color: #727784;
             font-style: italic;
         }
+
+        .custom-dropdown-menu {
+            touch-action: pan-y;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .dropdown-item {
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
     </style>
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -384,35 +394,35 @@
         function initCustomDropdown(inputElement) {
             const container = inputElement.closest(".custom-dropdown-container");
             const menu = container.querySelector(".custom-dropdown-menu");
-    
+        
             if (!container._optionsList) {
                 container._optionsList = [];
             }
-    
+        
             const renderOptions = (filterText = "") => {
                 const options = container._optionsList || [];
                 const searchNorm = normalizeText(filterText);
                 const filtered = options.filter(opt => normalizeText(opt).includes(searchNorm));
-    
+        
                 if (filtered.length === 0) {
                     menu.innerHTML = `<div class="dropdown-no-results">SIN COINCIDENCIAS (CONSERVARÁ TEXTO LIBRE)</div>`;
                 } else {
                     menu.innerHTML = filtered.map(opt => `<div class="dropdown-item" data-value="${opt}">${opt}</div>`).join("");
                 }
             };
-    
+        
             const openMenu = () => {
                 const card = container.closest(".cuadrilla-card");
                 if (card) updateCardOptions(card);
-    
+        
                 closeAllDropdowns();
                 container.classList.add("open");
                 renderOptions(inputElement.value);
             };
-    
+        
             inputElement.addEventListener("focus", openMenu);
             inputElement.addEventListener("click", openMenu);
-    
+        
             inputElement.addEventListener("input", () => {
                 inputElement.value = inputElement.value.toUpperCase();
                 if (!container.classList.contains("open")) {
@@ -420,8 +430,29 @@
                 }
                 renderOptions(inputElement.value);
             });
-    
-            menu.addEventListener("pointerdown", (e) => {
+        
+            // CONTROL DE SCROLL VS CLICK EN MÓVILES
+            let isScrolling = false;
+            let startY = 0;
+        
+            menu.addEventListener("touchstart", (e) => {
+                isScrolling = false;
+                startY = e.touches[0].clientY;
+            }, { passive: true });
+        
+            menu.addEventListener("touchmove", (e) => {
+                const moveY = e.touches[0].clientY;
+                if (Math.abs(moveY - startY) > 6) {
+                    isScrolling = true; // Fue un scroll, no un click
+                }
+            }, { passive: true });
+        
+            menu.addEventListener("click", (e) => {
+                if (isScrolling) {
+                    isScrolling = false;
+                    return; // Ignora el click si estabas desplazando la lista
+                }
+        
                 const item = e.target.closest(".dropdown-item");
                 if (item) {
                     inputElement.value = item.dataset.value;
