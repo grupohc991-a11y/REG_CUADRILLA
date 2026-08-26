@@ -620,7 +620,7 @@
             modal.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 999999; display: flex; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;";
         
             modal.innerHTML = `
-                <div style="background: #ffffff; border-radius: 16px; padding: 30px 20px; text-align: center; max-width: 380px; width: 100%; font-family: system-ui, -apple-system, sans-serif; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+                <div style="background: #ffffff; border-radius: 16px; padding: 30px 20px; text-align: center; max-width: 420px; width: 100%; font-family: system-ui, -apple-system, sans-serif; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
                     
                     <!-- Checkmark Verde -->
                     <div style="margin-bottom: 15px; display: flex; justify-content: center;">
@@ -630,38 +630,40 @@
                     </div>
         
                     <!-- Título y Subtítulo -->
-                    <h2 style="margin: 0 0 8px 0; color: #003f87; font-size: 20px; font-weight: 700; tracking-tight: uppercase;">¡REGISTRO EXITOSO!</h2>
+                    <h2 style="margin: 0 0 8px 0; color: #003f87; font-size: 20px; font-weight: 700; text-transform: uppercase;">¡REGISTRO EXITOSO!</h2>
                     <p style="font-size: 11px; color: #666666; margin: 0 0 30px 0; font-weight: 500; line-height: 1.4; text-transform: uppercase;">
                         LOS DATOS SE GUARDARON CORRECTAMENTE.<br>SELECCIONA UNA OPCIÓN:
                     </p>
                     
-                    <!-- Grid de 3 botones verticales simétricos -->
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%;">
+                    <!-- Contenedor de Botones -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;">
                         
                         <!-- Botón 1: Mostrar Registro -->
-                        <button id="btnVerRegistro" style="background: none; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 8px; color: #003f87; padding: 5px 0;">
-                            <svg style="width: 32px; height: 32px;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <button id="btnVerRegistro" style="background: none; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #003f87; flex: 1; padding: 0;">
+                            <svg style="width: 28px; height: 28px;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" stroke-linecap="round" stroke-linejoin="round"></path>
                                 <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round"></path>
                             </svg>
-                            <span style="font-size: 11px; font-weight: 700; color: #1a1a1a; text-transform: uppercase; line-height: 1.2; text-align: center;">MOSTRAR<br>REGISTRO</span>
+                            <span style="font-size: 10px; font-weight: 700; color: #1a1a1a; text-transform: uppercase; line-height: 1.1; text-align: center;">MOSTRAR<br>REGISTRO</span>
                         </button>
         
                         <!-- Botón 2: Compartir -->
-                        <button id="btnCompartirRegistro" style="background: none; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 8px; color: #003f87; padding: 5px 0;">
-                            <svg style="width: 32px; height: 32px;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <button id="btnCompartirRegistro" style="background: none; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #003f87; flex: 1; padding: 0;">
+                            <svg style="width: 26px; height: 26px;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M9 8.25H7.5a2.25 2.25 0 00-2.25 2.25v9a2.25 2.25 0 002.25 2.25h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25H15m0-3l-3-3m0 0l-3 3m3-3V15" stroke-linecap="round" stroke-linejoin="round"></path>
                             </svg>
-                            <span style="font-size: 11px; font-weight: 700; color: #1a1a1a; text-transform: uppercase; line-height: 1.2; text-align: center;">COMPARTIR</span>
+                            <span style="font-size: 10px; font-weight: 700; color: #1a1a1a; text-transform: uppercase; line-height: 1.1; text-align: center;">COMPARTIR</span>
                         </button>
         
-                        <!-- Botón 3: Finalizar -->
-                        <button id="btnFinalizarPagina" style="background: none; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 8px; color: #003f87; padding: 5px 0;">
-                            <svg style="width: 32px; height: 32px;" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"></path>
-                            </svg>
-                            <span style="font-size: 11px; font-weight: 700; color: #1a1a1a; text-transform: uppercase; line-height: 1.2; text-align: center;">FINALIZAR</span>
-                        </button>
+                        <!-- Botón 3: Finalizar (Estilo idéntico a ENVIAR REGISTROS) -->
+                        <div style="flex: 1.3; display: flex; justify-content: flex-end;">
+                            <button id="btnFinalizarPagina" class="bg-app-blue" style="background-color: #003f87; color: #ffffff; border: none; border-radius: 9999px; padding: 10px 16px; cursor: pointer; display: flex; items-center: center; justify-content: center; gap: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); transition: background-color 0.2s; width: 100%;">
+                                <svg style="width: 20px; height: 20px; stroke: #ffffff; color: #ffffff;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M4.5 12.75l6 6 9-13.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                </svg>
+                                <span style="font-size: 13px; font-weight: 700; color: #ffffff; text-transform: uppercase; white-space: nowrap;">FINALIZAR</span>
+                            </button>
+                        </div>
         
                     </div>
                 </div>
